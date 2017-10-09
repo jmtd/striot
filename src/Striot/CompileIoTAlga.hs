@@ -78,11 +78,15 @@ createPartitions g (p:ps) = (overlay vs es) : (createPartitions g ps) where
     vs = vertices $ filter fv (vertexList g)
     es = edges $ filter (\(v1,v2) -> (fv v1) && (fv v2)) (edgeList g)
 
+unPartition :: Ord a => [Graph (StreamVertex a)] -> Graph (StreamVertex a)
+unPartition = foldl overlay Empty
+
 toDot :: Ord a => Graph (StreamVertex a) -> String
-toDot g = "digraph {\n" ++ (toDot' (edgeList g)) ++ "}\n" where
+toDot g = "digraph {\n" ++ (vertexDefs) ++ (toDot' (edgeList g)) ++ "}\n" where
     toDot' [] = ""
     toDot' (e:es) = (blah e) ++ (toDot' es)
     blah (v1,v2) = "\t" ++ (show (vertexId v1)) ++ " -> " ++ (show (vertexId v2)) ++ ";\n"
+    vertexDefs = concat $ map ((\x -> "\t" ++ x ++ ";\n").show.vertexId) (vertexList g)
 
 {-
 s0 = StreamGraph "jmtdtest" 2 [] [
