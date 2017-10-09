@@ -34,10 +34,14 @@ data StreamOperator a = Map       -- (a -> b)      -> Stream a           -> Stre
 data StreamVertex a = StreamVertex
     { vertexId :: Int
     , operator :: StreamOperator a
-    } deriving (Show,Eq)
+    } deriving (Eq)
 
 instance Ord a => Ord (StreamVertex a) where
     compare (StreamVertex x _) (StreamVertex y _) = compare x y
+
+-- being careful here to avoid characters that graphViz would not like in an attribute
+instance Show a => Show (StreamVertex a) where
+    show v = (show (vertexId v))++":"++(show (operator v))
 
 -- Source -> Sink
 s0 = connect (Vertex (StreamVertex 0 (Source "?"))) (Vertex (StreamVertex 1 (Sink "!")))
@@ -71,22 +75,48 @@ type PartitionMap = [[Int]] -- XXX use Data.Map? (or another Map?)
 -- for sub-graph inter-connections
 
 
+-- XXX: attempt to synthesise additional sub-graphs that encode the edges
+-- between partitions. Use source/sink type operators for these sub-graphs
+-- in the hope we can reliably identify them later (real streamgraphs should
+-- only have source nodes at the start and sink nodes at the end)
 createPartitions :: Ord a => Graph (StreamVertex a) -> PartitionMap -> [(Graph (StreamVertex a))]
 createPartitions _ [] = []
-createPartitions g (p:ps) = (overlay vs es) : (createPartitions g ps) where
-    fv = \v -> (vertexId v) `elem` p
-    vs = vertices $ filter fv (vertexList g)
-    es = edges $ filter (\(v1,v2) -> (fv v1) && (fv v2)) (edgeList g)
+createPartitions g (p:ps) = (overlay vs es) : synthnodes : (createPartitions g ps) where
+    fv    = \v -> (vertexId v) `elem` p
+    vs    = vertices $ filter fv (vertexList g)
+    es    = edges $ filter (\(v1,v2) -> (fv v1) && (fv v2)) (edgeList g)
+    out_edges = filter (\(x,y) -> (fv x) && (not(fv y))) (edgeList g)
+    synthnodes = edges out_edges
+
+{-
+    problems with the above
+        * we're generating superfluous empty graphs (caused by out_edges being empty in the
+          no-broken edges case)
+        * once we're at the stage that there can be no sub-graph with no edges in it, the "overlay vs" stuff is unnecessary
+        * presently no way to identify which are the "linking sub-graphs" (that might be clearer once we've chosen node types
+          that are unambiguous for this purpose, if that's possible)
+ -}
 
 unPartition :: Ord a => [Graph (StreamVertex a)] -> Graph (StreamVertex a)
 unPartition = foldl overlay Empty
 
-toDot :: Ord a => Graph (StreamVertex a) -> String
+toDot :: Ord a => Show a => Graph (StreamVertex a) -> String
 toDot g = "digraph {\n" ++ (vertexDefs) ++ (toDot' (edgeList g)) ++ "}\n" where
     toDot' [] = ""
     toDot' (e:es) = (blah e) ++ (toDot' es)
     blah (v1,v2) = "\t" ++ (show (vertexId v1)) ++ " -> " ++ (show (vertexId v2)) ++ ";\n"
-    vertexDefs = concat $ map ((\x -> "\t" ++ x ++ ";\n").show.vertexId) (vertexList g)
+    vertexDefs = concatMap (\x -> "\t" ++ (show (vertexId x)) ++ " [label=\"" ++ (escape(show x)) ++ "\"]" ++ ";\n") (vertexList g)
+
+-- temp until I've written a show that is dot-label-safe
+escape :: String -> String
+escape [] = []
+escape (s:ss) = if   s `elem` escapeme
+                then '\\':s:(escape ss)
+                else s:(escape ss)
+    where
+        escapeme = "\\\""
+    --safechars = concat [['a'..'z'],['A'..'Z'],['\200'..'\377'],"_"]
+
 
 {-
 s0 = StreamGraph "jmtdtest" 2 [] [
