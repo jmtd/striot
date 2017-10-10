@@ -102,6 +102,11 @@ createPartitions g (p:ps) = ((overlay vs es):foo, cutEdges ++ bar) where
 unPartition :: Ord a => ([Graph (StreamVertex a)], [Graph (StreamVertex a)]) -> Graph (StreamVertex a)
 unPartition (a,b) = foldl overlay Empty (a ++ b)
 
+
+test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
+test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
+test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
+
 toDot :: Ord a => Show a => Graph (StreamVertex a) -> String
 toDot g = "digraph {\n" ++ (vertexDefs) ++ (toDot' (edgeList g)) ++ "}\n" where
     toDot' [] = ""
