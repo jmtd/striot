@@ -76,29 +76,31 @@ type PartitionMap = [[Int]] -- XXX use Data.Map? (or another Map?)
 
 
 -- XXX: attempt to synthesise additional sub-graphs that encode the edges
--- between partitions. Use source/sink type operators for these sub-graphs
--- in the hope we can reliably identify them later (real streamgraphs should
--- only have source nodes at the start and sink nodes at the end)
-createPartitions :: Ord a => Graph (StreamVertex a) -> PartitionMap -> [(Graph (StreamVertex a))]
-createPartitions _ [] = []
-createPartitions g (p:ps) = (overlay vs es) : synthnodes : (createPartitions g ps) where
-    fv    = \v -> (vertexId v) `elem` p
-    vs    = vertices $ filter fv (vertexList g)
-    es    = edges $ filter (\(v1,v2) -> (fv v1) && (fv v2)) (edgeList g)
-    out_edges = filter (\(x,y) -> (fv x) && (not(fv y))) (edgeList g)
-    synthnodes = edges out_edges
+-- between partitions.
+-- 
+-- return is a pair of lists of streamgraphs, fst matches the partition map,
+-- snd is the inter-graph links
+createPartitions :: Ord a => Graph (StreamVertex a) -> PartitionMap -> ([Graph (StreamVertex a)], [Graph (StreamVertex a)])
+createPartitions _ [] = ([],[])
+createPartitions g (p:ps) = ((overlay vs es):foo, cutEdges ++ bar) where
+    fv        = \v -> (vertexId v) `elem` p
+    vs        = vertices $ filter fv (vertexList g)
+    es        = edges $ filter (\(v1,v2) -> (fv v1) && (fv v2)) (edgeList g)
+    edgesOut  = edges $ filter (\(v1,v2) -> (fv v1) && (not(fv v2))) (edgeList g)
+    cutEdges  = if edgesOut == empty then [] else [edgesOut]
+    (foo,bar) = createPartitions g ps
 
 {-
     problems with the above
-        * we're generating superfluous empty graphs (caused by out_edges being empty in the
-          no-broken edges case)
         * once we're at the stage that there can be no sub-graph with no edges in it, the "overlay vs" stuff is unnecessary
-        * presently no way to identify which are the "linking sub-graphs" (that might be clearer once we've chosen node types
-          that are unambiguous for this purpose, if that's possible)
+            (we may never be there)
+    -- Use source/sink type operators for these sub-graphs
+    -- in the hope we can reliably identify them later (real streamgraphs should
+    -- only have source nodes at the start and sink nodes at the end)
  -}
 
-unPartition :: Ord a => [Graph (StreamVertex a)] -> Graph (StreamVertex a)
-unPartition = foldl overlay Empty
+unPartition :: Ord a => ([Graph (StreamVertex a)], [Graph (StreamVertex a)]) -> Graph (StreamVertex a)
+unPartition (a,b) = foldl overlay Empty (a ++ b)
 
 toDot :: Ord a => Show a => Graph (StreamVertex a) -> String
 toDot g = "digraph {\n" ++ (vertexDefs) ++ (toDot' (edgeList g)) ++ "}\n" where
