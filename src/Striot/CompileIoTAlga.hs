@@ -10,7 +10,11 @@
     vertex
  -}
 
-module Striot.CompileIoTAgda () where
+--  XXX do we need to export PartitionMap?
+module Striot.CompileIoTAgda ( createPartitions
+                             , StreamVertex
+                             , StreamOperator
+                             ) where
 
 import Algebra.Graph -- alga
 import Test.Framework
