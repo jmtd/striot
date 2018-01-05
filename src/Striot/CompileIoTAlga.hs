@@ -48,28 +48,7 @@ instance Show a => Show (StreamVertex a) where
 s0 = connect (Vertex (StreamVertex 0 (Source "?"))) (Vertex (StreamVertex 1 (Sink "!")))
 
 -- Source -> Filter -> Sink
-s1 = overlay
-         (connect (Vertex (StreamVertex 0 (Source "?"))) (Vertex (StreamVertex 1 Filter)))
-         (connect (Vertex (StreamVertex 1 Filter)) (Vertex (StreamVertex 2 (Sink "!"))))
-
--- attempt to more concisely define s1
-s1a = overlay (connect v0 v1) (connect v1 v2) where
-    v0 = Vertex $ StreamVertex 0 $ Source "?"
-    v1 = Vertex $ StreamVertex 1 $ Filter
-    v2 = Vertex $ StreamVertex 2 $ Sink "!"
-
--- nicer?
-s1b = edges [(v0,v1), (v1,v2)] where
-    v0 = StreamVertex 0 (Source "?")
-    v1 = StreamVertex 1 Filter
-    v2 = StreamVertex 2 (Sink "!")
-
--- even nicer?
-s1c = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (Sink "!")]
-
-test_same_a = assertEqual s1 s1a
-test_same_b = assertEqual s1 s1b
-test_same_c = assertEqual s1 s1c
+s1 = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (Sink "!")]
 
 ------------------------------------------------------------------------------
 -- attempt some partitioning
