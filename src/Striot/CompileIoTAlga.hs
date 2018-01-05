@@ -6,16 +6,14 @@
     should be such that vertices are uniquely identified
  -}
 
---  XXX do we need to export PartitionMap?
 module Striot.CompileIoTAlga ( createPartitions
                              , StreamVertex
                              , StreamOperator
                              , htf_thisModulesTests
                              ) where
 
-import Algebra.Graph -- alga
+import Algebra.Graph
 import Test.Framework
--- import qualified Data.Map as Map
 
 -- decorating with comments corresponding to valence/def in the draft paper
 
@@ -30,8 +28,7 @@ data StreamOperator a = Map       -- (a -> b)      -> Stream a           -> Stre
                       | Source a
                       | Sink a deriving (Show,Eq)
 
--- the crux of the issue: what data does a vertex actually need?
--- let's give them an Id to resolve this (for now?)
+-- Id needed for uniquely identifying a vertex. (Is there a nicer way?)
 data StreamVertex a = StreamVertex
     { vertexId :: Int
     , operator :: StreamOperator a
@@ -90,52 +87,5 @@ unPartition (a,b) = foldl overlay Empty (a ++ b)
 test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
-
-toDot :: Ord a => Show a => Graph a -> String
-toDot g = "digraph {\n" ++ vertexDefs ++ (toDot' (edgeList g)) ++ "}\n" where
-    toDot' [] = ""
-    toDot' (e:es) = (blah e) ++ (toDot' es)
-    blah (v1,v2) = "\t\"" ++ (show' v1) ++ "\" -> \"" ++ (show' v2) ++ "\";\n"
-    vertexDefs = concatMap (\x -> "\t\"" ++ (show' x) ++ "\" [label=\"" ++ (show' x) ++ "\"]" ++ ";\n") (vertexList g)
-    show' = escape . show
-
--- temp until I've written a show that is dot-label-safe
-escape :: String -> String
-escape [] = []
-escape (s:ss) = if   s `elem` escapeme
-                then '\\':s:(escape ss)
-                else s:(escape ss)
-    where
-        escapeme = "\\\":"
-    --safechars = concat [['a'..'z'],['A'..'Z'],['\200'..'\377'],"_"]
-
-
-{-
-s0 = StreamGraph "jmtdtest" 2 [] [
-       StreamOperation 1 [ ] Source ["sourceGen"] "Stream Trip" ["Taxi.hs","SourceGenerator.hs"],
-       StreamOperation 2 [1] Sink   ["print"]     ""            []
-     ]
--}
-
-
-
-{-
-data StreamGraph = StreamGraph
-   { gid        :: String
-   , resultId   :: Id
-   , ginputs    :: [(Id,String)] -- the String is the Type of the input
-   , operations :: [StreamOperation]}
-      deriving (Show, Eq)
-
-data StreamOperation  = StreamOperation
-   { opid       :: Int                  => uniqually identify this SO (Vertex)
-   , opinputs   :: [Int]                => inbound connection from other SO (edges)
-   , operator   :: StreamOperator       => type (Vertex)
-   , parameters :: [String]             => depends on type.. generator for Source XXX
-   , outputType :: String               => depends...
-   , imports    :: [String]}            => ?? (turned into haskell import lines)
-     deriving (Show, Eq)
-
- -}
 
 main = htfMain htf_thisModulesTests
