@@ -108,12 +108,13 @@ test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
 
-toDot :: Ord a => Show a => Graph (StreamVertex a) -> String
-toDot g = "digraph {\n" ++ (vertexDefs) ++ (toDot' (edgeList g)) ++ "}\n" where
+toDot :: Ord a => Show a => Graph a -> String
+toDot g = "digraph {\n" ++ vertexDefs ++ (toDot' (edgeList g)) ++ "}\n" where
     toDot' [] = ""
     toDot' (e:es) = (blah e) ++ (toDot' es)
-    blah (v1,v2) = "\t" ++ (show (vertexId v1)) ++ " -> " ++ (show (vertexId v2)) ++ ";\n"
-    vertexDefs = concatMap (\x -> "\t" ++ (show (vertexId x)) ++ " [label=\"" ++ (escape(show x)) ++ "\"]" ++ ";\n") (vertexList g)
+    blah (v1,v2) = "\t\"" ++ (show' v1) ++ "\" -> \"" ++ (show' v2) ++ "\";\n"
+    vertexDefs = concatMap (\x -> "\t\"" ++ (show' x) ++ "\" [label=\"" ++ (show' x) ++ "\"]" ++ ";\n") (vertexList g)
+    show' = escape . show
 
 -- temp until I've written a show that is dot-label-safe
 escape :: String -> String
@@ -122,7 +123,7 @@ escape (s:ss) = if   s `elem` escapeme
                 then '\\':s:(escape ss)
                 else s:(escape ss)
     where
-        escapeme = "\\\""
+        escapeme = "\\\":"
     --safechars = concat [['a'..'z'],['A'..'Z'],['\200'..'\377'],"_"]
 
 
