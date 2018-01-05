@@ -64,8 +64,12 @@ s1b = edges [(v0,v1), (v1,v2)] where
     v1 = StreamVertex 1 Filter
     v2 = StreamVertex 2 (Sink "!")
 
+-- even nicer?
+s1c = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (Sink "!")]
+
 test_same_a = assertEqual s1 s1a
 test_same_b = assertEqual s1 s1b
+test_same_c = assertEqual s1 s1c
 
 ------------------------------------------------------------------------------
 -- attempt some partitioning
