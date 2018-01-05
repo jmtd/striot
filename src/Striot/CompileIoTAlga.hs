@@ -37,7 +37,6 @@ data StreamVertex a = StreamVertex
 instance Ord a => Ord (StreamVertex a) where
     compare (StreamVertex x _) (StreamVertex y _) = compare x y
 
--- being careful here to avoid characters that graphViz would not like in an attribute
 instance Show a => Show (StreamVertex a) where
     show v = (show (vertexId v))++":"++(show (operator v))
 
@@ -50,42 +49,25 @@ s1 = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (S
 ------------------------------------------------------------------------------
 -- attempt some partitioning
 
-type PartitionMap = [[Int]] -- XXX use Data.Map? (or another Map?)
+type PartitionMap = [[Int]]
+-- outer-list index: partition ID
 -- each inner-list is a list of Vertex IDs to include in that partition
--- avoiding explicit partition IDs for now but we might need them later
--- for sub-graph inter-connections
 
-
--- XXX: attempt to synthesise additional sub-graphs that encode the edges
--- between partitions.
--- 
--- return is a pair of lists of streamgraphs, fst matches the partition map,
--- snd is the inter-graph links
+-- createPartitions returns ([partition map], [inter-graph links])
+-- where inter-graph links are the cut edges due to partitioning
 createPartitions :: Ord a => Graph (StreamVertex a) -> PartitionMap -> ([Graph (StreamVertex a)], [Graph (StreamVertex a)])
 createPartitions _ [] = ([],[])
-createPartitions g (p:ps) = ((overlay vs es):foo, cutEdges ++ bar) where
-    fv        = \v -> (vertexId v) `elem` p
+createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges ++ tailCuts) where
     vs        = vertices $ filter fv (vertexList g)
     es        = edges $ filter (\(v1,v2) -> (fv v1) && (fv v2)) (edgeList g)
-    edgesOut  = edges $ filter (\(v1,v2) -> (fv v1) && (not(fv v2))) (edgeList g)
     cutEdges  = if edgesOut == empty then [] else [edgesOut]
-    (foo,bar) = createPartitions g ps
-
-{-
-    problems with the above
-        * once we're at the stage that there can be no sub-graph with no edges in it, the "overlay vs" stuff is unnecessary
-            (we may never be there)
-    -- Use source/sink type operators for these sub-graphs
-    -- in the hope we can reliably identify them later (real streamgraphs should
-    -- only have source nodes at the start and sink nodes at the end)
- -}
+    fv v      = (vertexId v) `elem` p
+    edgesOut  = edges $ filter (\(v1,v2) -> (fv v1) && (not(fv v2))) (edgeList g)
+    (tailParts, tailCuts) = createPartitions g ps
 
 unPartition :: Ord a => ([Graph (StreamVertex a)], [Graph (StreamVertex a)]) -> Graph (StreamVertex a)
 unPartition (a,b) = foldl overlay Empty (a ++ b)
 
-
 test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
-
-main = htfMain htf_thisModulesTests
