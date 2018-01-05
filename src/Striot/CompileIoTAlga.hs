@@ -6,9 +6,17 @@
     should be such that vertices are uniquely identified
  -}
 
-module Striot.CompileIoTAlga ( createPartitions
+module Striot.CompileIoTAlga ( createPartitions    -- used by Optimizer
+                          -- , StreamGraph(..)     -- used by Optimizer
+                          -- , StreamOperation(..) -- used by Optimizer
                              , StreamVertex
-                             , StreamOperator
+                             , StreamOperator      -- used by Optimizer
+                          -- , Partition           -- used by Optimizer
+                          -- , Id
+                          -- , createPartitionsAndEdges
+                          -- , graphEdgesWithTypes -- used by VizGraph
+                          -- , printParams         -- used by VizGraph
+                          -- , generateCode
                              , htf_thisModulesTests
                              ) where
 
@@ -40,14 +48,8 @@ instance Ord a => Ord (StreamVertex a) where
 instance Show a => Show (StreamVertex a) where
     show v = (show (vertexId v))++":"++(show (operator v))
 
--- Source -> Sink
-s0 = connect (Vertex (StreamVertex 0 (Source "?"))) (Vertex (StreamVertex 1 (Sink "!")))
-
--- Source -> Filter -> Sink
-s1 = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (Sink "!")]
-
 ------------------------------------------------------------------------------
--- attempt some partitioning
+-- StreamGraph Partitioning
 
 type PartitionMap = [[Int]]
 -- outer-list index: partition ID
@@ -67,6 +69,15 @@ createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges ++ tailCuts) wh
 
 unPartition :: Ord a => ([Graph (StreamVertex a)], [Graph (StreamVertex a)]) -> Graph (StreamVertex a)
 unPartition (a,b) = foldl overlay Empty (a ++ b)
+
+------------------------------------------------------------------------------
+-- tests / test data
+
+-- Source -> Sink
+s0 = connect (Vertex (StreamVertex 0 (Source "?"))) (Vertex (StreamVertex 1 (Sink "!")))
+
+-- Source -> Filter -> Sink
+s1 = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (Sink "!")]
 
 test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
