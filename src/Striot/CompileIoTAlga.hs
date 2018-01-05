@@ -7,7 +7,7 @@
  -}
 
 --  XXX do we need to export PartitionMap?
-module Striot.CompileIoTAgda ( createPartitions
+module Striot.CompileIoTAlga ( createPartitions
                              , StreamVertex
                              , StreamOperator
                              ) where
