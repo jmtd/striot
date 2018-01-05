@@ -4,10 +4,6 @@
     attempt to recast CompileIoT in terms of Alga
     Alga has a parameterized type Graph a, so we need to figure out what a
     should be such that vertices are uniquely identified
-
-    confirm the hypothesis that Graph x == Graph x for any concrete x, or
-    a graph comprising two Vertices x where x == x are considered the same
-    vertex
  -}
 
 --  XXX do we need to export PartitionMap?
