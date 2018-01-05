@@ -10,6 +10,7 @@
 module Striot.CompileIoTAlga ( createPartitions
                              , StreamVertex
                              , StreamOperator
+                             , htf_thisModulesTests
                              ) where
 
 import Algebra.Graph -- alga
