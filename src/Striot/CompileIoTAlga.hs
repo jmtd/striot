@@ -79,6 +79,16 @@ s0 = connect (Vertex (StreamVertex 0 (Source "?"))) (Vertex (StreamVertex 1 (Sin
 -- Source -> Filter -> Sink
 s1 = path [StreamVertex 0 (Source "?"), StreamVertex 1 Filter, StreamVertex 2 (Sink "!")]
 
+-- port of s1 from CompileIoT
+s2 = path [ StreamVertex 0 (Source "sourceGen") -- ["sourceGen"]                                                                           "Stream Trip"            ["Taxi.hs","SourceGenerator.hs"],
+          , StreamVertex 1 Map                  -- ["\\t-> Journey{start=toCellQ1 (pickup t), end=toCellQ1 (dropoff t)}"]                  "Stream Journey"         ["Taxi.hs"],
+          , StreamVertex 2 Filter               -- ["\\j-> inRangeQ1 (start j) && inRangeQ1 (end j)"]                                      "Stream Journey"         ["Taxi.hs"],
+          , StreamVertex 3 Window               -- ["slidingTime 1800"]                                                                    "Stream [Journey]"       ["Taxi.hs"],
+          , StreamVertex 4 Map                  -- ["mostFrequent 10"]                                                                     "Stream [(Journey,Int)]" ["Taxi.hs"],
+          , StreamVertex 5 FilterAcc            -- ["value $ head s","\\h acc-> if (h==acc) then acc else h","\\h acc->(h/=acc)","tail s"] "Stream [(Journey,Int)]" ["Taxi.hs"],
+          , StreamVertex 6 (Sink "print")       -- ["print"]                                                                               ""                                []]
+          ]
+
 test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
