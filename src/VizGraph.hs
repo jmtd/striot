@@ -1,6 +1,10 @@
 module VizGraph(drawPartitionedStreamGraph,drawStreamGraph) where
 import Data.List
-import Striot.CompileIoT (printParams, graphEdgesWithTypes, Id, Partition, StreamGraph, opid, operations, parameters, operator)
+import Striot.CompileIoT (printParams, graphEdgesWithTypes, Id, Partition, StreamGraph, opid, operations, parameters, operator, s0, s1)
+
+import qualified Striot.CompileIoTAlga as CA
+import Algebra.Graph
+
 import Data.GraphViz
 import Data.Text.Lazy (Text, pack, unpack)
 import qualified Data.Map as Map
@@ -118,3 +122,29 @@ mkPartMap ps = foldl (\m (i,p) -> Map.insert i p m) Map.empty (concatMap (\(p,id
 drawStreamGraph:: StreamGraph -> String -> IO FilePath
 drawStreamGraph sg filename = addExtension (runGraphviz (streamGraphToDotGraph sg myParams)) Png filename 
 
+------------------------------------------------------------------------------
+
+-- XXX: Algebra.Graph.Export.Dot might be better; but means calling dot yourself rather
+-- than using the Dot library, unless ther's a helper to convert a String representation
+-- of a dot file output to a Dot datastructure
+
+-- override some parameters to avoid chopping up strings
+algaParams = myParams { fmtNode = myFN, fmtEdge = myFE } where
+    myFN (n,l) = [(Label . StrLabel) (Data.Text.Lazy.pack l)]
+    myFE (f,t,l) = [(Label . StrLabel) (Data.Text.Lazy.pack (' ':l))]
+
+-- tightened type up to String instead a; need => Ord a
+drawStreamGraphAlga :: Graph (CA.StreamVertex String) -> String -> IO FilePath
+drawStreamGraphAlga sg filename = addExtension (runGraphviz (algaGraphToDotGraph sg algaParams)) Png filename
+
+-- tightened type up to String instead a; need => Ord a
+algaGraphToDotGraph :: Graph (CA.StreamVertex String) -> (GraphvizParams Int String String () String) -> Data.GraphViz.DotGraph Int
+algaGraphToDotGraph g params = graphElemsToDot params nodes edges where
+    nodes = map (\v -> (CA.vertexId v, show v)) $ vertexList g
+    edges = map (\e -> ((CA.vertexId.fst) e, (CA.vertexId.snd) e, (show.(CA.operator).fst) e)) $ edgeList g
+    -- XXX third arg is type, we're just showing operator for now
+
+main = do
+    drawStreamGraphAlga CA.s2 "s2"
+
+-- XXX also need to modify the params, which are stripping/dropping chars from the labels
