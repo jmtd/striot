@@ -106,3 +106,13 @@ test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]]
 
 type StreamGraph = Graph (StreamGraph String)
 generateCode:: StreamGraph -> PartitionMap -> [String] {-stdImports-} -> [String]
+
+------------------------------------------------------------------------------
+-- attempt to define equivalent of pipeline example
+--
+-- in theory we should be able to generate code that is equivalent to the pipeline
+-- example based on this data structure
+
+pipeEx = path [ StreamVertex 0 (Source "source") ["clockStreamNamed \"Hello from Client!\" 1000")]
+              , StreamVertex 1 Map               ["\st-> reverse st"]
+              , StreamVertex 2 (Sink ".")        ["mapM_ (putStrLn . show)"]
