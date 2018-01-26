@@ -351,9 +351,13 @@ generatePartitionCode fullsg stdImports pid partition = case graphPartitionCateg
                                                            Sink2Partition    -> showSinkGraph stdImports fullsg pid partition "nodeSink2"
 --                                                           SourcePartition   -> (showStreamGraph stdImports partition) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeSource "   ++ gid partition ++ "\n"
                                                            SourcePartition   -> showSourceGraph stdImports pid partition                                                     
-                                                           LinkPartition     -> (showStreamGraph stdImports partition) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeLink "     ++ gid partition ++ "\n"
+                                                           LinkPartition     -> (showStreamGraph stdImports partition) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeLink "     ++ gid partition ++ " " ++ defaultPortStr ++ " " ++ temphostname ++ " " ++ defaultPortStr ++ "\n"
                                                            Link2Partition    -> (showStreamGraph stdImports partition) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeLink2 "    ++ gid partition ++ "\n"
                                                            SingularPartition -> (showStreamGraph stdImports partition) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeSingular " ++ gid partition ++ "\n"
+
+defaultPortStr = "9001" -- IP port for node communication
+--temphostname = "(\"temphostname\" :: Network.Socket.HostName)"
+temphostname = "\"temphostname\""
 
 showSourceGraph:: [String] -> Partition -> StreamGraph -> String
 showSourceGraph stdImports pid partition = let [srcOp] = filter (\op -> operator op == Source) (operations partition) in
@@ -361,9 +365,9 @@ showSourceGraph stdImports pid partition = let [srcOp] = filter (\op -> operator
                                            if (length (operations partition))>1
                                            then
                                               let newPart = snd $ head $ createPartitions partition [(pid,(map opid (operations partition)) \\ [srcOpId])] in
-                                                 (showStreamGraph stdImports newPart) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeSource " ++ printParams (parameters srcOp) ++ " " ++ gid newPart ++ "\n"
+                                                 (showStreamGraph stdImports newPart) ++ "\n" ++ "main :: IO () \n" ++ "main = nodeSource " ++ printParams (parameters srcOp) ++ " " ++ gid newPart ++ " " ++ temphostname ++ " " ++ defaultPortStr ++ "\n"
                                            else
-                                              "main :: IO () \n" ++ "main = nodeSource " ++ printParams (parameters srcOp) ++ " " ++ "(streamFilter True)" ++ "\n"
+                                              "main :: IO () \n" ++ "main = nodeSource " ++ printParams (parameters srcOp) ++ " " ++ "(streamFilter True)" ++ " " ++ temphostname ++ " " ++ defaultPortStr ++ "\n"
                                                  
 showSinkGraph:: [String] -> StreamGraph -> Partition -> StreamGraph -> String -> String
 showSinkGraph stdImports fullsg pid partition nodeName = let [sinkOp] = filter (\op -> operator op == Sink) (operations partition) in
@@ -371,9 +375,9 @@ showSinkGraph stdImports fullsg pid partition nodeName = let [sinkOp] = filter (
                                                          if (length (operations partition))>1 -- just the sink node in this partition
                                                          then
                                                             let newPart = snd $ head $ createPartitions fullsg [(pid,(map opid (operations partition)) \\ [sinkOpId])] in 
-                                                               (showStreamGraph stdImports newPart) ++ "\n" ++ "main :: IO () \n" ++ "main = " ++ nodeName ++ " " ++ gid newPart ++ " " ++ printParams (parameters sinkOp) ++ " " ++ "\n"
+                                                               (showStreamGraph stdImports newPart) ++ "\n" ++ "main :: IO () \n" ++ "main = " ++ nodeName ++ " " ++ gid newPart ++ " " ++ printParams (parameters sinkOp) ++ " " ++ defaultPortStr ++ "\n"
                                                          else
-                                                            "main :: IO () \n" ++ "main = " ++ nodeName ++ " " ++ "(streamFilter True)" ++ " " ++ printParams (parameters sinkOp) ++ " " ++ "\n"
+                                                            "main :: IO () \n" ++ "main = " ++ nodeName ++ " " ++ "(streamFilter True)" ++ " " ++ printParams (parameters sinkOp) ++ " " ++ defaultPortStr ++ "\n"
                                                          
 generateCode:: StreamGraph -> [(Partition,[Id])] -> [String] -> [String]
 generateCode sg ps stdImports = map (\(pid,part)->generatePartitionCode sg stdImports pid part) $ createPartitions sg ps
