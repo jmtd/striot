@@ -155,24 +155,26 @@ generateCodeFromStreamGraph :: StreamGraph -> String
 generateCodeFromStreamGraph sg = intercalate "\n" $
     imports ++
     sgTypeSignature :
+    sgIntro :
     (map ((padding++).generateCodeFromVertex) (zip [1..] (vertexList sg))) ++
-    [padding ++ lastIdentifier,"\n",
+    [padding ++ "in " ++ lastIdentifier,"\n",
      "main :: IO ()",
      "main = "++nodeFn++" someFunction 9001 \"temphostname\" 9001"
     ]
     where
         padding = "    "
         sgTypeSignature = "someFunction :: Stream String -> Stream String" -- XXX actual types
-        imports = (map ("import "++) stdImports) ++ ["\n"]
+        sgIntro = "someFunction n0 = let"
+        imports = (map ("import "++) ("Network":stdImports)) ++ ["\n"]
         lastIdentifier = 'n':(show $ length (vertexList sg))
         nodeFn = "nodeLink" -- XXX: or source, or sink
 
 generateCodeFromVertex :: (Integer, StreamVertex a) -> String
-generateCodeFromVertex (opid, v)  = concat [ "let n", (show opid), " = "
+generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
                                            , show (operator v)
                                            , " ("
                                            , intercalate "\n" (parameters v)
-                                           , ")", " in"
+                                           , ") ", ('n':(show (opid-1)))
                                            ]
 
 -- next: sequencing operations properly (= graph traversal); generating "let" code
