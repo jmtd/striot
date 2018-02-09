@@ -20,7 +20,7 @@ module Striot.CompileIoTAlga ( createPartitions    -- used by Optimizer
                              --, generateCode
                              , PartitionMap -- implementation feature of this module
                              , htf_thisModulesTests
-                             , s0, s1, s2
+                             , s0, s1
                              ) where
 
 import Algebra.Graph
@@ -51,8 +51,6 @@ instance Show StreamOperator where
     show Expand          = "streamExpand"
     show Source          = "streamSource"
     show Sink            = "streamSink"
-    
-
 
 -- Id needed for uniquely identifying a vertex. (Is there a nicer way?)
 data StreamVertex a = StreamVertex
@@ -95,79 +93,80 @@ createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges ++ tailCuts) wh
 unPartition :: Ord a => ([Graph (StreamVertex a)], [Graph (StreamVertex a)]) -> Graph (StreamVertex a)
 unPartition (a,b) = foldl overlay Empty (a ++ b)
 
-------------------------------------------------------------------------------
--- tests / test data
-
--- Source -> Sink
-s0 = connect (Vertex (StreamVertex 0 (Source) [])) (Vertex (StreamVertex 1 (Sink) []))
-
--- Source -> Filter -> Sink
-s1 = path [StreamVertex 0 (Source) [], StreamVertex 1 Filter [], StreamVertex 2 (Sink) []]
-
--- port of s1 from CompileIoT
-s2 = path [ StreamVertex 0 Source    ["sourceGen"]--                                                                           "Stream Trip"            ["Taxi.hs","SourceGenerator.hs"],
-          , StreamVertex 1 Map       ["\\t-> Journey{start=toCellQ1 (pickup t), end=toCellQ1 (dropoff t)}"]--                  "Stream Journey"         ["Taxi.hs"],
-          , StreamVertex 2 Filter    ["\\j-> inRangeQ1 (start j) && inRangeQ1 (end j)"]--                                      "Stream Journey"         ["Taxi.hs"],
-          , StreamVertex 3 Window    ["slidingTime 1800"] --                                                                   "Stream [Journey]"       ["Taxi.hs"],
-          -- StreamOperation opid [opinputs] operator [parameters: "mostFrequent 10"] outputtype:"Stream [(Journey,Int)]" imports:["Taxi.hs"],
-          , StreamVertex 4 Map       ["mostFrequent 10"] --                                                                    "Stream [(Journey,Int)]" ["Taxi.hs"],
-          , StreamVertex 5 FilterAcc ["value $ head s","\\h acc-> if (h==acc) then acc else h","\\h acc->(h/=acc)","tail s"]-- "Stream [(Journey,Int)]" ["Taxi.hs"],
-          , StreamVertex 6 Sink      ["print"] --                                                                              ""                                []]
-          ]
-
--- temporarily disabled, complaining about:
--- ambuguous type variable... Ord constraint...
---test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
---test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
---test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
-
 type StreamGraph = Graph (StreamVertex String)
 
-{- -----------------------------------------------------------------------------
----- attempt to define equivalent of pipeline example
-    missing stuff
-        types! the graph types are String for most of this but window makes it
-        Stream [String]... not represented yet in our type
-        should we define source/sink in the data structure, or should they be
-        part of the "outside"
+{-
+    a well-formed streamgraph:
+        always starts with a Source?
+        always has just one Source?
+        always ends with a Sink?
+        always has just one Sink?
+        is entirely connected?
+        ...
+    a well-formed partition spec:
+        has ≥ 1 partition
+        references node IDs that exist
+        covers all node IDs?
+        passes some kind of connectedness test?
 -}
-pipeEx :: StreamGraph
-pipeEx = path [ StreamVertex 1 Source [""]
-              , StreamVertex 2 Map    ["\\st->st++st"]
-              , StreamVertex 3 Map    ["\\st->reverse st"]
-              , StreamVertex 4 Map    ["\\st->\"Incoming Message at Server: \" ++ st"]
-              , StreamVertex 5 Window ["(chop 2)"]
-              , StreamVertex 6 Sink   [""]
-              ]
 
 stdImports = ["Striot.FunctionalIoTtypes", "Striot.FunctionalProcessing", "Striot.Nodes"]
-partEx = generateCode pipeEx [[1,2],[3],[4,5]] stdImports
 
 generateCode :: StreamGraph -> PartitionMap -> [String] -> [String]
-generateCode sg pm imports = generateCode' $ createPartitions sg pm
+generateCode sg pm imports = generateCode' (createPartitions sg pm) imports
 
-generateCode' :: ([StreamGraph], [StreamGraph]) -> [String]
-generateCode' (sgs,_) = map generateCodeFromStreamGraph sgs
+generateCode' :: ([StreamGraph], [StreamGraph]) -> [String] -> [String]
+generateCode' (sgs,_) imports = map (generateCodeFromStreamGraph imports) (zip [1..] sgs)
+
+data NodeType = NodeSource | NodeSink | NodeLink deriving (Show)
+
+nodeType :: StreamGraph -> NodeType
+nodeType sg = if operator (head (vertexList sg)) == Source
+              then NodeSource
+              else if (operator.head.reverse.vertexList) sg == Sink
+                   then NodeSink
+                   else NodeLink
 
 -- vertexList outputs *sorted*. That corresponds to the Id value for
 -- our StreamVertex type
-generateCodeFromStreamGraph :: StreamGraph -> String
-generateCodeFromStreamGraph sg = intercalate "\n" $
-    imports ++
+generateCodeFromStreamGraph :: [String] -> (Integer,StreamGraph) -> String
+generateCodeFromStreamGraph imports (partId,sg) = intercalate "\n" $
+    nodeId : -- convenience comment labelling the node/partition ID
+    imports' ++
+    (possibleSrcSinkFn sg) :
     sgTypeSignature :
     sgIntro :
-    (map ((padding++).generateCodeFromVertex) (zip [1..] (vertexList sg))) ++
+    (map ((padding++).generateCodeFromVertex) (zip [1..] intVerts)) ++
     [padding ++ "in " ++ lastIdentifier,"\n",
-     "main :: IO ()",
-     "main = "++nodeFn++" someFunction 9001 \"temphostname\" 9001"
-    ]
-    where
+    "main :: IO ()",
+    nodeFn sg] where
+        nodeId = "-- node"++(show partId)
         padding = "    "
-        sgTypeSignature = "someFunction :: Stream String -> Stream String" -- XXX actual types
-        sgIntro = "someFunction n0 = let"
-        imports = (map ("import "++) ("Network":stdImports)) ++ ["\n"]
-        lastIdentifier = 'n':(show $ length (vertexList sg))
-        nodeFn = "nodeLink" -- XXX: or source, or sink
+        sgTypeSignature = "streamGraphFn :: Stream String -> Stream String" -- XXX actual types
+        sgIntro = "streamGraphFn n0 = let"
+        imports' = (map ("import "++) ("Network":imports)) ++ ["\n"]
+        lastIdentifier = 'n':(show $ length intVerts)
+        intVerts= filter (\x-> not $ operator x `elem` [Source,Sink]) $ vertexList sg
+        nodeFn sg = case (nodeType sg) of
+            NodeSource -> generateNodeSrc  (partId + 1)
+            NodeLink   -> generateNodeLink (partId + 1)
+            NodeSink   -> generateNodeSink
+        possibleSrcSinkFn sg = case (nodeType sg) of
+            NodeSource -> generateSrcFn sg
+            NodeLink   -> ""
+            NodeSink   -> generateSinkFn sg
+
+generateSrcFn :: StreamGraph -> String
+generateSrcFn sg = "src1 :: IO String\nsrc1 = " ++
+    (intercalate "\n" $ parameters $ head $ vertexList sg) ++ "\n"
+
+generateSinkFn:: StreamGraph -> String
+generateSinkFn sg = "sink1 :: Show a => [a] -> IO ()\nsink1 = " ++
+    (intercalate "\n" $ parameters $ head $ reverse $ vertexList sg) ++ "\n"
+
+generateNodeLink n = "main = nodeLink streamGraphFn 9001 \"node"++(show n)++"\" 9001"
+generateNodeSrc  n = "main = nodeSource src1 streamGraphFn \"node"++(show n)++"\" 9001"
+generateNodeSink   = "main = nodeSink streamGraphFn sink1 9001"
 
 generateCodeFromVertex :: (Integer, StreamVertex a) -> String
 generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
@@ -177,12 +176,31 @@ generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
                                            , ") ", ('n':(show (opid-1)))
                                            ]
 
--- next: sequencing operations properly (= graph traversal); generating "let" code
--- to sequence the output strings in a valid way (same as CompileIoT)
--- probably need to use an alga fold..
-
 ------------------------------------------------------------------------------
--- something like output.hs, to output this stuff to files
+-- tests / test data
+
+-- Source -> Sink
+s0 = connect (Vertex (StreamVertex 0 (Source) [])) (Vertex (StreamVertex 1 (Sink) []))
+
+-- Source -> Filter -> Sink
+s1 = path [StreamVertex 0 (Source) [], StreamVertex 1 Filter [], StreamVertex 2 (Sink) []]
+
+-- temporarily disabled, complaining about:
+-- ambuguous type variable... Ord constraint...
+--test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
+--test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
+--test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
+
+pipeEx :: StreamGraph
+pipeEx = path [ StreamVertex 1 Source ["do\n\tthreadDelay (1000*1000)\n\treturn \"Hello from Client!\""]
+              , StreamVertex 2 Map    ["\\st->st++st"]
+              , StreamVertex 3 Map    ["\\st->reverse st"]
+              , StreamVertex 4 Map    ["\\st->\"Incoming Message at Server: \" ++ st"]
+              , StreamVertex 5 Window ["(chop 2)"]
+              , StreamVertex 6 Sink   ["mapM_ (putStrLn . show)"]
+              ]
+
+partEx = generateCode pipeEx [[1,2],[3],[4,5,6]] ("Control.Concurrent":stdImports)
 
 main = do
     mapM_ (\(x,y) -> writeFile (x:".hs") y) (zip ['a'..] partEx)
