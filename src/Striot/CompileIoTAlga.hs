@@ -194,7 +194,7 @@ s1 = path [StreamVertex 0 (Source) [], StreamVertex 1 Filter [], StreamVertex 2 
 --test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
 
 pipeEx :: StreamGraph
-pipeEx = path [ StreamVertex 1 Source ["do\n\tthreadDelay (1000*1000)\n\treturn \"Hello from Client!\""] "String"
+pipeEx = path [ StreamVertex 1 Source ["do\n    threadDelay (1000*1000)\n    return \"Hello from Client!\""] "String"
               , StreamVertex 2 Map    ["\\st->st++st"]                                                   "String"
               , StreamVertex 3 Map    ["\\st->reverse st"]                                               "String"
               , StreamVertex 4 Map    ["\\st->\"Incoming Message at Server: \" ++ st"]                   "String"
