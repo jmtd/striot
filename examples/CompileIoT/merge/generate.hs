@@ -11,7 +11,7 @@ imports = ["Striot.FunctionalIoTtypes", "Striot.FunctionalProcessing", "Striot.N
 source x = "do\n\
 \    threadDelay (1000*1000)\n\
 \    putStrLn \"sending '"++x++"'\"\n\
-\    return \"foo\""
+\    return \""++x++"\""
 
 
 --streamMerge:: [Stream alpha]-> Stream alpha
