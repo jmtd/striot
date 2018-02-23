@@ -79,6 +79,7 @@ type PartitionMap = [[Int]]
 
 -- createPartitions returns ([partition map], [inter-graph links])
 -- where inter-graph links are the cut edges due to partitioning
+-- XXX: we could probably fold the cut edges and return ([Graph], Graph)
 createPartitions :: Ord a => Graph (StreamVertex a) -> PartitionMap -> ([Graph (StreamVertex a)], [Graph (StreamVertex a)])
 createPartitions _ [] = ([],[])
 createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges ++ tailCuts) where
@@ -115,7 +116,7 @@ generateCode :: StreamGraph -> PartitionMap -> [String] -> [String]
 generateCode sg pm imports = generateCode' (createPartitions sg pm) imports
 
 generateCode' :: ([StreamGraph], [StreamGraph]) -> [String] -> [String]
-generateCode' (sgs,_) imports = map (generateCodeFromStreamGraph imports) (zip [1..] sgs)
+generateCode' (sgs,cuts) imports = map (generateCodeFromStreamGraph imports cuts) (zip [1..] sgs)
 
 data NodeType = NodeSource | NodeSink | NodeLink deriving (Show)
 
@@ -128,8 +129,8 @@ nodeType sg = if operator (head (vertexList sg)) == Source
 
 -- vertexList outputs *sorted*. That corresponds to the Id value for
 -- our StreamVertex type
-generateCodeFromStreamGraph :: [String] -> (Integer,StreamGraph) -> String
-generateCodeFromStreamGraph imports (partId,sg) = intercalate "\n" $
+generateCodeFromStreamGraph :: [String] -> ([StreamGraph]) -> (Integer,StreamGraph) -> String
+generateCodeFromStreamGraph imports cuts (partId,sg) = intercalate "\n" $
     nodeId : -- convenience comment labelling the node/partition ID
     imports' ++
     (possibleSrcSinkFn sg) :
@@ -149,7 +150,7 @@ generateCodeFromStreamGraph imports (partId,sg) = intercalate "\n" $
         nodeFn sg = case (nodeType sg) of
             NodeSource -> generateNodeSrc  (partId + 1)
             NodeLink   -> generateNodeLink (partId + 1)
-            NodeSink   -> generateNodeSink
+            NodeSink   -> generateNodeSink (partValence sg cuts)
         possibleSrcSinkFn sg = case (nodeType sg) of
             NodeSource -> generateSrcFn sg
             NodeLink   -> ""
@@ -167,7 +168,10 @@ generateSinkFn sg = "sink1 :: Show a => [a] -> IO ()\nsink1 = " ++
 
 generateNodeLink n = "main = nodeLink streamGraphFn 9001 \"node"++(show n)++"\" 9001"
 generateNodeSrc  n = "main = nodeSource src1 streamGraphFn \"node"++(show n)++"\" 9001"
-generateNodeSink   = "main = nodeSink streamGraphFn sink1 9001"
+generateNodeSink v = case v of
+    1 -> "main = nodeSink streamGraphFn sink1 9001"
+    2 -> "main = nodeSink2 streamGraphFn sink1 9001 9002"
+    v -> error "generateNodeSink: unhandled valence " ++ (show v)
 
 generateCodeFromVertex :: (Integer, StreamVertex a) -> String
 generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
@@ -191,3 +195,12 @@ s1 = path [StreamVertex 0 (Source) [], StreamVertex 1 Filter [], StreamVertex 2 
 --test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 --test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 --test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
+
+-- how many incoming edges to this partition?
+partValence :: StreamGraph -> [StreamGraph] -> Int
+partValence g cuts = let
+    cut = foldl overlay empty cuts
+    verts = vertexList g
+    destVerts = map snd (edgeList cut)
+    in
+        length $ filter (`elem` verts) destVerts
