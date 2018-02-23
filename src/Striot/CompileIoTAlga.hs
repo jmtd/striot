@@ -10,7 +10,6 @@ module Striot.CompileIoTAlga ( createPartitions    -- used by Optimizer
                              , StreamGraph(..)     -- used by Optimizer
                           -- , StreamOperation(..) -- used by Optimizer
                              , StreamVertex(..)
-                             , vertexId, operator
                              , StreamOperator(..)  -- used by Optimizer
                           -- , Partition           -- used by Optimizer
                           -- , Id
