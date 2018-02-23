@@ -63,7 +63,7 @@ instance Ord a => Ord (StreamVertex a) where
     compare (StreamVertex x _ _ _) (StreamVertex y _ _ _) = compare x y
 
 instance Show a => Show (StreamVertex a) where
-    show v = (map (\x->if x=='"' then '\'' else x) (show (operator v))) ++
+    show v = (show$vertexId v)++(map (\x->if x=='"' then '\'' else x) (show (operator v))) ++
         (concatMap (\s->"("++s++") ") (parameters v))
     -- XXX: temporary translate " to ' so output is "dot syntax clean"
 
