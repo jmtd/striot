@@ -52,17 +52,17 @@ instance Show StreamOperator where
     show Sink            = "streamSink"
 
 -- Id needed for uniquely identifying a vertex. (Is there a nicer way?)
-data StreamVertex a = StreamVertex
+data StreamVertex = StreamVertex
     { vertexId   :: Int
     , operator   :: StreamOperator
     , parameters :: [String] -- XXX strings of code. From CompileIoT. Variable length e.g.FilterAcc takes 3 (?)
     , intype     :: String
     } deriving (Eq)
 
-instance Ord a => Ord (StreamVertex a) where
+instance Ord StreamVertex where
     compare (StreamVertex x _ _ _) (StreamVertex y _ _ _) = compare x y
 
-instance Show a => Show (StreamVertex a) where
+instance Show StreamVertex where
     show v = (show$vertexId v)++(map (\x->if x=='"' then '\'' else x) (show (operator v))) ++
         (concatMap (\s->"("++s++") ") (parameters v))
     -- XXX: temporary translate " to ' so output is "dot syntax clean"
@@ -80,7 +80,7 @@ type PartitionMap = [[Int]]
 -- createPartitions returns ([partition map], [inter-graph links])
 -- where inter-graph links are the cut edges due to partitioning
 -- XXX: we could probably fold the cut edges and return ([Graph], Graph)
-createPartitions :: Ord a => Graph (StreamVertex a) -> PartitionMap -> ([Graph (StreamVertex a)], [Graph (StreamVertex a)])
+createPartitions :: Graph StreamVertex -> PartitionMap -> ([Graph StreamVertex], [Graph StreamVertex])
 createPartitions _ [] = ([],[])
 createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges ++ tailCuts) where
     vs        = vertices $ filter fv (vertexList g)
@@ -90,10 +90,10 @@ createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges ++ tailCuts) wh
     edgesOut  = edges $ filter (\(v1,v2) -> (fv v1) && (not(fv v2))) (edgeList g)
     (tailParts, tailCuts) = createPartitions g ps
 
-unPartition :: Ord a => ([Graph (StreamVertex a)], [Graph (StreamVertex a)]) -> Graph (StreamVertex a)
+unPartition :: ([Graph StreamVertex], [Graph StreamVertex]) -> Graph StreamVertex
 unPartition (a,b) = foldl overlay Empty (a ++ b)
 
-type StreamGraph = Graph (StreamVertex String)
+type StreamGraph = Graph StreamVertex
 
 {-
     a well-formed streamgraph:
@@ -173,7 +173,7 @@ generateNodeSink v = case v of
     2 -> "main = nodeSink2 streamGraphFn sink1 9001 9002"
     v -> error "generateNodeSink: unhandled valence " ++ (show v)
 
-generateCodeFromVertex :: (Integer, StreamVertex a) -> String
+generateCodeFromVertex :: (Integer, StreamVertex) -> String
 generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
                                            , show (operator v)
                                            , " ("
