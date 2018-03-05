@@ -185,16 +185,20 @@ generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
 -- tests / test data
 
 -- Source -> Sink
-s0 = connect (Vertex (StreamVertex 0 (Source) [])) (Vertex (StreamVertex 1 (Sink) []))
+s0 = connect (Vertex (StreamVertex 0 (Source) [] "String"))
+    (Vertex (StreamVertex 1 (Sink) [] "String"))
 
 -- Source -> Filter -> Sink
-s1 = path [StreamVertex 0 (Source) [], StreamVertex 1 Filter [], StreamVertex 2 (Sink) []]
+s1 = path [ StreamVertex 0 (Source) [] "String"
+          , StreamVertex 1 Filter [] "String"
+          , StreamVertex 2 (Sink) [] "String"
+          ]
 
 -- temporarily disabled, complaining about:
 -- ambuguous type variable... Ord constraint...
---test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
---test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
---test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
+test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
+test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
+test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
 
 -- how many incoming edges to this partition?
 partValence :: StreamGraph -> [StreamGraph] -> Int
