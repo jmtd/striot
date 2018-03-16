@@ -95,6 +95,38 @@ unPartition (a,b) = foldl overlay Empty (a ++ b)
 
 type StreamGraph = Graph StreamVertex
 
+------------------------------------------------------------------------------
+-- quickcheck experiment
+
+instance Arbitrary StreamOperator where
+    arbitrary = elements [ Map , Filter , Expand , Window , Merge , Join , Scan
+                         , FilterAcc , Source , Sink ]
+
+instance Arbitrary StreamVertex where
+    arbitrary = do
+        vertexId <- arbitrary
+        operator <- arbitrary
+        let parameters = []
+            intype = "String"
+            in
+                return $ StreamVertex vertexId operator parameters intype
+
+streamgraph :: Gen StreamGraph
+streamgraph = sized streamgraph'
+streamgraph' 0 = return g where g = empty :: StreamGraph
+streamgraph' n | n>0 = do
+    v <- arbitrary
+    t <- streamgraph' (n-1)
+    return $ connect (vertex v) t
+
+--instance Arbitrary StreamGraph where
+--    arbitrary = do
+--        -- XXX build a random StreamGraph
+--        x <- arbitrary
+--        return $ ...
+
+------------------------------------------------------------------------------
+
 {-
     a well-formed streamgraph:
         always starts with a Source?
