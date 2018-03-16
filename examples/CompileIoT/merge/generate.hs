@@ -15,17 +15,16 @@ source x = "do\n\
 
 
 v1 = StreamVertex 1 Source [source "foo"]              "String"
-v2 = StreamVertex 2 Map    ["id"]                      "String"
+v2 = StreamVertex 2 Map    ["Prelude.id"]              "String"
 v3 = StreamVertex 3 Source [source "bar"]              "String"
-v4 = StreamVertex 4 Map    ["id"]                      "String"
-v5 = StreamVertex 5 Merge  ["[s1,s2]"]                 "[String]"
-v6 = StreamVertex 6 Window ["(chop 2)"]                "String"
-v7 = StreamVertex 7 Sink   ["mapM_ (putStrLn . show)"] "[String]"
+v4 = StreamVertex 4 Map    ["Prelude.id"]              "String"
+v5 = StreamVertex 5 Merge  ["[n0,n1]"]                 "[String]"
+v6 = StreamVertex 6 Sink   ["mapM_ (putStrLn . show)"] "[String]"
 
 mergeEx :: StreamGraph
-mergeEx = overlay (path [v3, v4, v5]) $ path [v1, v2, v5, v6, v7]
+mergeEx = overlay (path [v3, v4, v5]) $ path [v1, v2, v5, v6]
 
-parts = [[1,2],[3,4],[5,6,7]]
+parts = [[1,2],[3,4],[5,6]]
 partEx = generateCode mergeEx parts imports
 
 writePart :: (Char, String) -> IO ()
