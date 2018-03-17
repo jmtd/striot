@@ -210,12 +210,14 @@ generateNodeSink v = case v of
 -- special case handling needed for several node types, e.g.,
 --      merge: parameters will include the opid so no need to suffix
 generateCodeFromVertex :: (Int, StreamVertex) -> String
-generateCodeFromVertex (opid, v)  = concat [ "n", (show opid), " = "
-                                           , show (operator v)
-                                           , " ("
-                                           , intercalate "\n" (parameters v)
-                                           , ") ", ('n':(show (opid-1)))
-                                           ]
+generateCodeFromVertex (opid, v)  = concat $ [ "n", (show opid), " = "
+                                             , show (operator v)
+                                             , " ("
+                                             , intercalate "\n" (parameters v)
+                                             , ")"
+                                             ] ++ case (operator v) of
+                                                Merge -> []
+                                                _     -> [" n", show (opid-1)]
 
 ------------------------------------------------------------------------------
 -- tests / test data
