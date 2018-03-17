@@ -168,17 +168,17 @@ generateCodeFromStreamGraph imports cuts (partId,sg) = intercalate "\n" $
     (possibleSrcSinkFn sg) :
     sgTypeSignature :
     sgIntro :
-    (map ((padding++).generateCodeFromVertex) (zip [valence..] intVerts)) ++
+    (map ((padding++).generateCodeFromVertex) (zip [(valence+1)..] intVerts)) ++
     [padding ++ "in " ++ lastIdentifier,"\n",
     "main :: IO ()",
     nodeFn sg] where
         nodeId = "-- node"++(show partId)
         padding = "    "
-        sgTypeSignature = "streamGraphFn :: Stream "++inType++" -> Stream "++outType
+        sgTypeSignature = "streamGraphFn ::"++(concat $ take valence $ repeat $ " Stream "++inType++" ->")++" Stream "++outType
         sgIntro = "streamGraphFn "++sgArgs++" = let"
-        sgArgs = unwords $ map (('n':).show.(\n->n-1)) [1..valence]
+        sgArgs = unwords $ map (('n':).show) [1..valence]
         imports' = (map ("import "++) ("Network":imports)) ++ ["\n"]
-        lastIdentifier = 'n':(show $ (length intVerts) + valence - 1)
+        lastIdentifier = 'n':(show $ (length intVerts) + valence)
         intVerts= filter (\x-> not $ operator x `elem` [Source,Sink]) $ vertexList sg
         valence = partValence sg cuts
         nodeFn sg = case (nodeType sg) of
