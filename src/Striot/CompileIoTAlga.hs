@@ -207,8 +207,6 @@ generateNodeSink v = case v of
     2 -> "main = nodeSink2 streamGraphFn sink1 9001 9002"
     v -> error "generateNodeSink: unhandled valence " ++ (show v)
 
--- special case handling needed for several node types, e.g.,
---      merge: parameters will include the opid so no need to suffix
 generateCodeFromVertex :: (Int, StreamVertex) -> String
 generateCodeFromVertex (opid, v)  = concat $ [ "n", (show opid), " = "
                                              , show (operator v)
