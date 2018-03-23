@@ -112,7 +112,9 @@ generateCode :: StreamGraph -> PartitionMap -> [String] -> [String]
 generateCode sg pm imports = generateCode' (createPartitions sg pm) imports
 
 generateCode' :: ([StreamGraph], [StreamGraph]) -> [String] -> [String]
-generateCode' (sgs,cuts) imports = map (generateCodeFromStreamGraph imports cuts) (zip [1..] sgs)
+generateCode' (sgs,cuts) imports = let
+                  enumeratedParts = zip [1..] sgs
+                  in map (generateCodeFromStreamGraph imports enumeratedParts cuts) enumeratedParts
 
 data NodeType = NodeSource | NodeSink | NodeLink deriving (Show)
 
@@ -125,8 +127,8 @@ nodeType sg = if operator (head (vertexList sg)) == Source
 
 -- vertexList outputs *sorted*. That corresponds to the Id value for
 -- our StreamVertex type
-generateCodeFromStreamGraph :: [String] -> ([StreamGraph]) -> (Integer,StreamGraph) -> String
-generateCodeFromStreamGraph imports cuts (partId,sg) = intercalate "\n" $
+generateCodeFromStreamGraph :: [String] -> [(Integer, StreamGraph)] -> [StreamGraph] -> (Integer,StreamGraph) -> String
+generateCodeFromStreamGraph imports parts cuts (partId,sg) = intercalate "\n" $
     nodeId : -- convenience comment labelling the node/partition ID
     imports' ++
     (possibleSrcSinkFn sg) :
@@ -146,7 +148,7 @@ generateCodeFromStreamGraph imports cuts (partId,sg) = intercalate "\n" $
         intVerts= filter (\x-> not $ operator x `elem` [Source,Sink]) $ vertexList sg
         valence = partValence sg cuts
         nodeFn sg = case (nodeType sg) of
-            NodeSource -> generateNodeSrc  (partId + 1)
+            NodeSource -> generateNodeSrc partId (connectNodeId sg parts cuts)
             NodeLink   -> generateNodeLink (partId + 1)
             NodeSink   -> generateNodeSink valence
         possibleSrcSinkFn sg = case (nodeType sg) of
@@ -155,6 +157,18 @@ generateCodeFromStreamGraph imports cuts (partId,sg) = intercalate "\n" $
             NodeSink   -> generateSinkFn sg
         inType = intype $ head $ vertexList sg
         outType= intype $ head $ reverse $ vertexList sg -- XXX not strictly true
+
+-- determine the node(s?) to connect on to from this partition
+connectNodeId :: StreamGraph -> [(Integer, StreamGraph)] -> [StreamGraph] -> [Integer]
+connectNodeId sg parts cuts = let
+    cut   = foldl overlay empty cuts
+    edges = edgeList cut
+    outs  = vertexList sg
+    outEs = filter (\(f,t) -> f `elem` outs) edges
+    destVs= map snd outEs
+    destGs= concatMap (\v -> filter (\(n,sg) -> v `elem` (vertexList sg)) parts) destVs
+
+    in map fst destGs
 
 generateSrcFn :: StreamGraph -> String
 generateSrcFn sg = "src1 :: IO String\nsrc1 = " ++
@@ -166,10 +180,14 @@ generateSinkFn sg = "sink1 :: Show a => [a] -> IO ()\nsink1 = " ++
 
 generateNodeLink n = "main = nodeLink streamGraphFn 9001 \"node"++(show n)++"\" 9001"
 
-generateNodeSrc :: String -> String
-generateNodeSrc s = "main = nodeSource src1 streamGraphFn \""++s++"\" 9001"
--- XXX the port 9001 will depend which input-subgraph we are, it might need to be
--- incremented
+-- warts:
+--  we accept a list of onward nodes but nodeSource only accepts one anyway
+generateNodeSrc :: Integer -> [Integer] -> String
+generateNodeSrc partId nodes = let
+    node = head nodes
+    host = "node" ++ (show node)
+    port = 9001 + partId -1 -- XXX Unlikely to always be correct
+    in "main = nodeSource src1 streamGraphFn \""++host++"\" "++(show port)
 
 generateNodeSink v = case v of
     1 -> "main = nodeSink streamGraphFn sink1 9001"
