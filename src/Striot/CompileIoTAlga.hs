@@ -24,7 +24,7 @@ module Striot.CompileIoTAlga ( createPartitions    -- used by Optimizer
 
 import Algebra.Graph
 import Test.Framework
-import Data.List (intersperse)
+import Data.List (intersperse, intercalate)
 
 data StreamOperator   = Map
                       | Filter
