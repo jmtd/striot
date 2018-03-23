@@ -24,18 +24,16 @@ module Striot.CompileIoTAlga ( createPartitions    -- used by Optimizer
 
 import Algebra.Graph
 import Test.Framework
-import Data.List -- intersperse
+import Data.List (intersperse)
 
--- decorating with comments corresponding to valence/def in the draft paper
-
-data StreamOperator   = Map       -- (a -> b)      -> Stream a           -> Stream b
-                      | Filter    -- (a -> Bool)   -> Stream a           -> Stream a
-                      | Expand    -- Stream [a]    -> Stream a
-                      | Window    -- (Stream a     -> Stream [a])        -> Stream a      -> Stream [a]
-                      | Merge     -- [Stream a]    -> Stream a
-                      | Join      -- Stream a      -> Stream b           -> Stream (a,b)
-                      | Scan      -- (b -> a -> b) -> b                  -> Stream a      -> Stream b                  -- "stream map with accumulating parameter"
-                      | FilterAcc -- (b -> a -> b) -> b (a -> b -> Bool)                                                                 -> Stream a -> Stream a
+data StreamOperator   = Map
+                      | Filter
+                      | Expand
+                      | Window
+                      | Merge
+                      | Join
+                      | Scan
+                      | FilterAcc
                       | Source
                       | Sink   deriving (Ord,Eq)
 
@@ -67,9 +65,6 @@ instance Show StreamVertex where
         (concatMap (\s->"("++s++") ") (parameters v))
     -- XXX: temporary translate " to ' so output is "dot syntax clean"
 
--- XXX: add a type definition for Graph (StreamVertex a)... and/or concrete instead of a?
--- …for exporting
-
 ------------------------------------------------------------------------------
 -- StreamGraph Partitioning
 
@@ -96,36 +91,7 @@ unPartition (a,b) = foldl overlay Empty (a ++ b)
 type StreamGraph = Graph StreamVertex
 
 ------------------------------------------------------------------------------
--- quickcheck experiment
-
-instance Arbitrary StreamOperator where
-    arbitrary = elements [ Map , Filter , Expand , Window , Merge , Join , Scan
-                         , FilterAcc , Source , Sink ]
-
-instance Arbitrary StreamVertex where
-    arbitrary = do
-        vertexId <- arbitrary
-        operator <- arbitrary
-        let parameters = []
-            intype = "String"
-            in
-                return $ StreamVertex vertexId operator parameters intype
-
-streamgraph :: Gen StreamGraph
-streamgraph = sized streamgraph'
-streamgraph' 0 = return g where g = empty :: StreamGraph
-streamgraph' n | n>0 = do
-    v <- arbitrary
-    t <- streamgraph' (n-1)
-    return $ connect (vertex v) t
-
---instance Arbitrary StreamGraph where
---    arbitrary = do
---        -- XXX build a random StreamGraph
---        x <- arbitrary
---        return $ ...
-
-------------------------------------------------------------------------------
+-- Code generation from StreamGraph definitions
 
 {-
     a well-formed streamgraph:
@@ -141,8 +107,6 @@ streamgraph' n | n>0 = do
         covers all node IDs?
         passes some kind of connectedness test?
 -}
-
-stdImports = ["Striot.FunctionalIoTtypes", "Striot.FunctionalProcessing", "Striot.Nodes"]
 
 generateCode :: StreamGraph -> PartitionMap -> [String] -> [String]
 generateCode sg pm imports = generateCode' (createPartitions sg pm) imports
@@ -201,7 +165,12 @@ generateSinkFn sg = "sink1 :: Show a => [a] -> IO ()\nsink1 = " ++
     (intercalate "\n" $ parameters $ head $ reverse $ vertexList sg) ++ "\n"
 
 generateNodeLink n = "main = nodeLink streamGraphFn 9001 \"node"++(show n)++"\" 9001"
-generateNodeSrc  n = "main = nodeSource src1 streamGraphFn \"node"++(show n)++"\" 9001"
+
+generateNodeSrc :: String -> String
+generateNodeSrc s = "main = nodeSource src1 streamGraphFn \""++s++"\" 9001"
+-- XXX the port 9001 will depend which input-subgraph we are, it might need to be
+-- incremented
+
 generateNodeSink v = case v of
     1 -> "main = nodeSink streamGraphFn sink1 9001"
     2 -> "main = nodeSink2 streamGraphFn sink1 9001 9002"
@@ -216,6 +185,17 @@ generateCodeFromVertex (opid, v)  = concat $ [ "n", (show opid), " = "
                                              ] ++ case (operator v) of
                                                 Merge -> []
                                                 _     -> [" n", show (opid-1)]
+
+-- how many incoming edges to this partition?
+-- + how many source nodes
+partValence :: StreamGraph -> [StreamGraph] -> Int
+partValence g cuts = let
+    cut = foldl overlay empty cuts
+    verts = vertexList g
+    inEdges = filter (\e -> (snd e) `elem` verts) (edgeList cut)
+    sourceNodes = filter (\v -> Source == operator v) (vertexList g)
+    in
+        (length sourceNodes) + (length inEdges)
 
 ------------------------------------------------------------------------------
 -- tests / test data
@@ -236,14 +216,34 @@ test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
 
--- how many incoming edges to this partition?
--- + how many source nodes
-partValence :: StreamGraph -> [StreamGraph] -> Int
-partValence g cuts = let
-    cut = foldl overlay empty cuts
-    verts = vertexList g
-    inEdges = filter (\e -> (snd e) `elem` verts) (edgeList cut)
-    sourceNodes = filter (\v -> Source == operator v) (vertexList g)
-    in
-        (length sourceNodes) + (length inEdges)
+------------------------------------------------------------------------------
+-- quickcheck experiment
+
+instance Arbitrary StreamOperator where
+    arbitrary = elements [ Map , Filter , Expand , Window , Merge , Join , Scan
+                         , FilterAcc , Source , Sink ]
+
+instance Arbitrary StreamVertex where
+    arbitrary = do
+        vertexId <- arbitrary
+        operator <- arbitrary
+        let parameters = []
+            intype = "String"
+            in
+                return $ StreamVertex vertexId operator parameters intype
+
+streamgraph :: Gen StreamGraph
+streamgraph = sized streamgraph'
+streamgraph' 0 = return g where g = empty :: StreamGraph
+streamgraph' n | n>0 = do
+    v <- arbitrary
+    t <- streamgraph' (n-1)
+    return $ connect (vertex v) t
+
+--instance Arbitrary StreamGraph where
+--    arbitrary = do
+--        -- XXX build a random StreamGraph
+--        x <- arbitrary
+--        return $ ...
+
 
