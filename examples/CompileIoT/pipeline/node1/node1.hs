@@ -12,9 +12,9 @@ src1 = do
     return "Hello from Client!"
 
 streamGraphFn :: Stream String -> Stream String
-streamGraphFn n0 = let
-    n1 = streamMap (\st->st++st) n0
-    in n1
+streamGraphFn n1 = let
+    n2 = streamMap (\st->st++st) n1
+    in n2
 
 
 main :: IO ()

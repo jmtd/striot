@@ -9,12 +9,11 @@ import Control.Concurrent
 sink1 :: Show a => [a] -> IO ()
 sink1 = mapM_ (putStrLn . show)
 
-streamGraphFn :: Stream String -> Stream [String]
-streamGraphFn n1 = let
-    n2 = streamMap (\st->"Incoming Message at Server: " ++ st) n1
-    n3 = streamWindow ((chop 2)) n2
+streamGraphFn :: Stream String -> Stream String -> Stream String
+streamGraphFn n1 n2 = let
+    n3 = streamMerge ([n1,n2])
     in n3
 
 
 main :: IO ()
-main = nodeSink streamGraphFn sink1 9001
+main = nodeSink2 streamGraphFn sink1 9001 9002
