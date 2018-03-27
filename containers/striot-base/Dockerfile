@@ -9,6 +9,7 @@ RUN cabal update && \
     network \
     split \
     stm \
+    algebraic-graphs \
     HTF
 
 COPY striot /opt/striot
