@@ -14,4 +14,4 @@ streamGraph1 s = streamWindow (chop 1) (streamFilter evfilter s)
         evfilter s = (read s :: Int) > 5
 
 printStream:: Show alpha => Stream alpha -> IO ()
-printStream = mapM_ (\s -> putStrLn $ "receiving " ++ (show (value s)))
+printStream = mapM_ $ putStrLn . ("receiving "++) . show . value
