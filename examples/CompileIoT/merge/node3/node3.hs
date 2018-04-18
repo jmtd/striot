@@ -6,7 +6,7 @@ import Striot.Nodes
 import Control.Concurrent
 
 
-sink1 :: Show a => [a] -> IO ()
+sink1 :: Show a => Stream a -> IO ()
 sink1 = mapM_ (putStrLn . show)
 
 streamGraphFn :: Stream String -> Stream String -> Stream String
