@@ -175,7 +175,7 @@ generateSrcFn sg = "src1 :: IO String\nsrc1 = " ++
     (intercalate "\n" $ parameters $ head $ vertexList sg) ++ "\n"
 
 generateSinkFn:: StreamGraph -> String
-generateSinkFn sg = "sink1 :: Show a => [a] -> IO ()\nsink1 = " ++
+generateSinkFn sg = "sink1 :: Show a => Stream a -> IO ()\nsink1 = " ++
     (intercalate "\n" $ parameters $ head $ reverse $ vertexList sg) ++ "\n"
 
 generateNodeLink n = "main = nodeLink streamGraphFn 9001 \"node"++(show n)++"\" 9001"
