@@ -195,14 +195,17 @@ generateNodeSink v = case v of
     v -> error "generateNodeSink: unhandled valence " ++ (show v)
 
 generateCodeFromVertex :: (Int, StreamVertex) -> String
-generateCodeFromVertex (opid, v)  = concat $ [ "n", (show opid), " = "
-                                             , show (operator v)
-                                             , " ("
-                                             , intercalate "\n" (parameters v)
-                                             , ")"
-                                             ] ++ case (operator v) of
-                                                Merge -> []
-                                                _     -> [" n", show (opid-1)]
+generateCodeFromVertex (opid, v)  = let
+    op = operator v
+    args = case op of
+        Merge -> []
+        Join  -> [" n", show (opid-2), " n", show (opid-1)]
+        _     -> [" n", show (opid-1)]
+    params = case op of
+        Join -> []
+        _    -> [" (" , intercalate "\n" (parameters v) , ")"]
+    in
+        concat $ [ "n", (show opid), " = " , show (operator v) ] ++ params ++ args
 
 -- how many incoming edges to this partition?
 -- + how many source nodes
