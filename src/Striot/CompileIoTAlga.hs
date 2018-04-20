@@ -200,6 +200,7 @@ generateCodeFromVertex (opid, v)  = let
     params = case op of
         Join   -> []
         Expand -> []
+        Scan   -> [" ", intercalate " " (parameters v)]
         _      -> [" (" , intercalate "\n" (parameters v) , ")"]
     args = case op of
         Merge -> []
