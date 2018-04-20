@@ -197,13 +197,14 @@ generateNodeSink v = case v of
 generateCodeFromVertex :: (Int, StreamVertex) -> String
 generateCodeFromVertex (opid, v)  = let
     op = operator v
+    params = case op of
+        Join   -> []
+        Expand -> []
+        _      -> [" (" , intercalate "\n" (parameters v) , ")"]
     args = case op of
         Merge -> []
         Join  -> [" n", show (opid-2), " n", show (opid-1)]
         _     -> [" n", show (opid-1)]
-    params = case op of
-        Join -> []
-        _    -> [" (" , intercalate "\n" (parameters v) , ")"]
     in
         concat $ [ "n", (show opid), " = " , show (operator v) ] ++ params ++ args
 
