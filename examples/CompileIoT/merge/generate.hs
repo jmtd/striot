@@ -19,7 +19,7 @@ v2 = StreamVertex 2 Map    ["Prelude.id"]              "String"
 v3 = StreamVertex 3 Source [source "bar"]              "String"
 v4 = StreamVertex 4 Map    ["Prelude.id"]              "String"
 v5 = StreamVertex 5 Merge  ["[n1,n2]"]                 "String"
-v6 = StreamVertex 6 Sink   ["mapM_ (putStrLn . show)"] "String"
+v6 = StreamVertex 6 Sink   ["mapM_ print"] "String"
 
 mergeEx :: StreamGraph
 mergeEx = overlay (path [v3, v4, v5]) $ path [v1, v2, v5, v6]

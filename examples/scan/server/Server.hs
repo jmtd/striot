@@ -12,4 +12,4 @@ streamGraph1 :: Stream String -> Stream Int
 streamGraph1 s = streamScan (\old _ -> old + 1) 0 s
 
 printStream:: Show alpha => Stream alpha -> IO ()
-printStream = mapM_ (putStrLn.show)
+printStream = mapM_ print

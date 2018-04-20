@@ -14,7 +14,7 @@ pipeEx = path [ StreamVertex 1 Source ["do\n    threadDelay (1000*1000)\n    ret
               , StreamVertex 3 Map    ["\\st->reverse st"]                                               "String"
               , StreamVertex 4 Map    ["\\st->\"Incoming Message at Server: \" ++ st"]                   "String"
               , StreamVertex 5 Window ["(chop 2)"]                                                       "String"
-              , StreamVertex 6 Sink   ["mapM_ (putStrLn . show)"]                                        "[String]"
+              , StreamVertex 6 Sink   ["mapM_ print"]                                        "[String]"
               ]
 
 partEx = generateCode pipeEx [[1,2],[3],[4,5,6]] imports

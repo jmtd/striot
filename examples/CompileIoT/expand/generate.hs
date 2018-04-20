@@ -31,7 +31,7 @@ v1 = StreamVertex 1 Source [source] "String"
 v2 = StreamVertex 2 Map    ["filter (('#'==).head) . words"] "[String]"
 
 v5 = StreamVertex 5 Expand [""]                 "[String]"
-v6 = StreamVertex 6 Sink   ["mapM_ (putStrLn . show)"] "String"
+v6 = StreamVertex 6 Sink   ["mapM_ print"] "String"
 
 mergeEx :: StreamGraph
 mergeEx = path [v1, v2, v5, v6]

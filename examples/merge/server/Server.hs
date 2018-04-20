@@ -7,7 +7,7 @@ import Striot.Nodes
 
 
 sink1 :: Show a => [a] -> IO ()
-sink1 = mapM_ (putStrLn . show)
+sink1 = mapM_ print
 
 streamGraphFn :: Stream String -> Stream String -> Stream String
 streamGraphFn s1 s2 = streamMerge [s1,s2]
