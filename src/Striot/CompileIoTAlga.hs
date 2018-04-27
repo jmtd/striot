@@ -201,7 +201,8 @@ generateCodeFromVertex (opid, v)  = let
         Join   -> []
         Expand -> []
         Scan   -> [" ", intercalate " " (parameters v)]
-        _      -> [" (" , intercalate "\n" (parameters v) , ")"]
+        FilterAcc -> [" ", intercalate " " (parameters v)]
+        _      -> [" (" , intercalate "\n" (parameters v) , ")"] -- XXX does this ever make sense?
     args = case op of
         Merge -> []
         Join  -> [" n", show (opid-2), " n", show (opid-1)]
