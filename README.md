@@ -14,19 +14,18 @@ We model a stream as a (possibly infinite) list of events. Each event may or may
 
 ```haskell
 
-data Event alpha = Event { eventId :: Int
-                         , time    :: Maybe Timestamp
-                         , value   :: Maybe alpha}
+data Event α = Event { eventId :: Int
+                     , time    :: Maybe Timestamp
+                     , value   :: Maybe α }
      deriving (Eq, Ord, Show, Read, Generic)
 
 type Timestamp    = UTCTime
 
-type Stream alpha = [Event alpha]
+type Stream α = [Event α]
 ```
 
 The Event can be defined without a value (a `timedEvent`), and is used for time-based operations as will be described later.
-Note that an Event can hold data of any type (e.g. integers, strings, tuples, lists, trees, graphs and even functions). An important principle is that separation between the view of the system seen by the user and the infrastructure: the details of the processing infrastructure are hidden allowing for multiple different implementations, and the addition of functionality to transparently support non-functional requirements. The functions that we provide for the user to process streams allow the user to only see a simple view of a stream as a list of type alpha: [alpha]
-
+Note that an Event can hold data of any type (e.g. integers, strings, tuples, lists, trees, graphs and even functions). An important principle is that separation between the view of the system seen by the user and the infrastructure: the details of the processing infrastructure are hidden allowing for multiple different implementations, and the addition of functionality to transparently support non-functional requirements. The functions that we provide for the user to process streams allow the user to only see a simple view of a stream as a list of type `α: [α]`
 In the rest of the  note we describe the stream operators that can be contained in a stream graph.
 
 ## Stream Operators
@@ -48,13 +47,13 @@ The streamFilter function takes a stream as input, and generates a stream contai
 
 
 ```haskell
-streamFilter:: EventFilter alpha -> -- Function applied to each input
-                                    --   event to determine if it
-                                    --   meets the criteria
-               Stream alpha      -> -- The input  stream
-               Stream alpha         -- The output stream
+streamFilter:: EventFilter α -> -- Function applied to each input
+                                --   event to determine if it
+                                --   meets the criteria
+               Stream α      -> -- The input  stream
+               Stream α         -- The output stream
 
-type EventFilter alpha = alpha -> Bool -- type of the filter function
+type EventFilter α = α -> Bool -- type of the filter function
 ```
 
 This illustrates the fact that the user does not need to know or understand the exact format of the events as seen by the infrastructure: they only need provide a function of type EventFilter to filter out all events whose value does not meet a particular criterion. This user-provided function is applied by the infrastructure to each the value in each element of the stream, and only those that return “True” are selected.
@@ -89,22 +88,22 @@ streamFilter (\temp->temp>100) tempSensor
 Sometimes, it is necessary to filter events based partly on past results. This can be done using the function streamFilterAcc whose signature is as follows:
 
 ```haskell
-streamFilterAcc:: (beta -> alpha -> beta) ->  -- the accumulator fn:
-                                              --- takes accumulator &
-                                              --- head of stream
-                                              --- and computes
-                                              --- the new accumulator
-                  beta ->                     -- initial accumulator value
-                  (alpha -> beta -> Bool) ->  -- the filter fn: takes head
-                                              --- of stream & accumulator
-                  Stream alpha ->             -- input stream
-                  Stream alpha                -- output stream
+streamFilterAcc:: (β -> α -> β) ->  -- the accumulator fn:
+                                        --- takes accumulator &
+                                        --- head of stream
+                                        --- and computes
+                                        --- the new accumulator
+                  β ->              -- initial accumulator value
+                  (α -> β -> Bool) ->  -- the filter fn: takes head
+                                       --- of stream & accumulator
+                  Stream α ->       -- input stream
+                  Stream α          -- output stream
 ```
 
 An example of its use is where we only want to propagate an event if its value is different to the previous event (though the timestamp may differ). This can be written:
 
 ```haskell
-changes:: Eq alpha=> Stream alpha -> Stream alpha
+changes:: Eq α => Stream α -> Stream α
 changes s = streamFilterAcc (\_ h -> h)
                             (value $ head s)
                             (/=)
@@ -114,7 +113,7 @@ changes s = streamFilterAcc (\_ h -> h)
 Another example is a function that samples its input, only passing through one event in n:
 
 ```haskell
-sample:: Int -> Stream alpha -> Stream alpha
+sample:: Int -> Stream α -> Stream α
 sample n s = streamFilterAcc (\acc h -> if acc==0 then n else acc-1)
                              n
                              (\h acc -> acc==0)
@@ -126,12 +125,12 @@ sample n s = streamFilterAcc (\acc h -> if acc==0 then n else acc-1)
 The function mapStream is used to transform the values in a stream. The user supplies a function of type EventMap which is applied to the value within each event in the input stream to generate the output stream. The function streamMap has the signature:
 
 ```haskell
-streamMap:: EventMap alpha beta -> -- the user-supplied map function
-            Stream alpha        -> -- input stream
-            Stream beta            -- output stream
+streamMap:: EventMap α β ->    -- the user-supplied map function
+            Stream α     ->    -- input stream
+            Stream β           -- output stream
 
-type EventMap alpha beta = alpha -> beta -- type of the
-                                         -- user-supplied map function
+type EventMap α β = α -> β -- type of the
+                           -- user-supplied map function
 ```
 
 To illustrate this with the running example, let us say that after filtering all temperatures over 100, the user wants to use 100 as the baseline temperature, and represent all temperatures as their value over 100. To do this we can define a function:
@@ -160,19 +159,19 @@ Note that the user does not have to understand the format of events, nor how map
 There is sometimes the need for a map function whose output depends on the history of events.
 
 ```haskell
-streamScan:: (beta -> alpha -> beta) ->  -- the accumulator fn:
+streamScan:: (β -> α -> β) ->  -- the accumulator fn:
                                          --  takes head of stream &
                                          --  accumulator and computes
                                          --  the new accumulator
-              beta ->                    -- initial accumulator value
-              Stream alpha ->            -- input stream
-              Stream beta                -- output stream
+              β            ->   -- initial accumulator value
+              Stream α     ->   -- input stream
+              Stream β          -- output stream
 ```
 
 An example is emitting an event giving a count of the number of events received so far in the stream:
 
 ```haskell
-counter:: Stream alpha -> Stream Int
+counter:: Stream α -> Stream Int
 counter s = scanStream (+1) 0 s
 ```
 
@@ -181,8 +180,8 @@ counter s = scanStream (+1) 0 s
 Sometimes, it is necessary to generate multiple events from each input event. A function provided for this is:
 
 ```haskell
-streamExpand::  Stream [alpha] ->          -- input  stream
-                Stream alpha               -- output stream
+streamExpand::  Stream [α] ->          -- input  stream
+                Stream α               -- output stream
 ```
 
 An example is a function that takes in a stream of Twitter tweets, and generates a stream of the hashtags found in those tweets. Assume a function getHashtags with signature:
@@ -204,13 +203,11 @@ Windowing provides a way to break a stream into a stream whose elements contain 
 The basic windowing function is:
 
 ```haskell
-streamWindow:: WindowMaker alpha ->            -- turns stream
-                                               --  into stream of
-                                               --  windows
-               Stream alpha ->                 -- input stream
-               Stream [alpha]                  -- output stream
+streamWindow:: WindowMaker α ->            -- turns stream into stream of windows
+               Stream α ->                 -- input stream
+               Stream [α]                  -- output stream
 
-type WindowMaker alpha = Stream alpha -> [Stream alpha]
+type WindowMaker α = Stream α -> [Stream α]
 ```
 
 WindowMaker is a function that generates a list of windows.
@@ -219,31 +216,31 @@ A pre-defined set of functions covering the common WindowMaker cases is provided
 
 ```haskell
 -- create sliding windows that are a fixed number of events in length
-sliding:: Int -> WindowMaker alpha
+sliding:: Int -> WindowMaker α
 
 -- create sliding windows that are a fixed time length
-slidingTime:: NominalDiffTime -> WindowMaker alpha
+slidingTime:: NominalDiffTime -> WindowMaker α
 
 -- create non-overlapping windows that are a fixed # of events in length
-chop:: Int -> WindowMaker alpha
+chop:: Int -> WindowMaker α
 
 -- create non-overlapping windows that are a fixed time length
-chopTime:: NominalDiffTime -> WindowMaker alpha
+chopTime:: NominalDiffTime -> WindowMaker α
 ```
 
 Building on this, we can then provide a function that combines windowing and aggregation:
 
 ```haskell
-streamWindowAggregate:: WindowMaker alpha ->            -- turns stream
-                                                        --  into stream of
-                                                        --  windows
-                        WindowAggregator alpha beta -> -- aggregates
-                                                        --  window into
-                                                        --  single value
-                        Stream alpha ->                 -- input stream
-                        Stream beta                     -- output stream
+streamWindowAggregate:: WindowMaker α ->        -- turns stream
+                                                --  into stream of
+                                                --  windows
+                        WindowAggregator α β -> -- aggregates
+                                                --  window into
+                                                --  single value
+                        Stream α ->             -- input stream
+                        Stream β                -- output stream
 
-type WindowAggregator alpha beta = [alpha] -> beta
+type WindowAggregator α β = [α] -> β
 ```
 
 WindowAggregator takes a list of the values contained in a window of events, and aggregates them into a single value.
@@ -267,7 +264,7 @@ Here, length is the standard Haskell function that returns the length of a list.
 Sometimes there is a need to merge multiple streams of the same type into one. This is done with the streamMerge function.
 
 ```haskell
-streamMerge:: [Stream alpha]-> Stream alpha
+streamMerge:: [Stream α]-> Stream α
 ```
 
 For example, if there are three temperature sensors then we can combine them as follows:
@@ -291,7 +288,7 @@ A basic join is provided, along with two others that build on it.
 The basic stream join has the signature
 
 ```haskell
-streamJoin:: Stream alpha -> Stream beta -> Stream (alpha,beta)
+streamJoin:: Stream α -> Stream β -> Stream (α,β)
 ```
 
 This takes two streams as input and generates a stream where each event holds pair containing the payload of the events in each stream. The streams are combined in a pairwise manner.
@@ -301,18 +298,18 @@ Two higher level join functions are provided that operate on windows of events.
 The first - streamJoinE – has the signature:
 
 ```haskell
-type JoinFilter alpha beta        = alpha -> beta -> Bool
-type JoinMap    alpha beta gamma  = alpha -> beta -> gamma
+type JoinFilter α β        = α -> β -> Bool
+type JoinMap    α β gamma  = α -> β -> gamma
 
-streamJoinE:: WindowMaker alpha ->         -- create windows from stream 1
-              WindowMaker beta ->          -- create windows from stream 2
-              JoinFilter alpha beta ->     -- determines if this pair of
-                                           --   values meets join criteria
-              JoinMap alpha beta gamma ->  -- combines the pair of values
-                                           --  into the output event
-              Stream alpha ->              -- 1st input stream
-              Stream beta  ->              -- 2nd input stream
-              Stream gamma                 -- the output stream
+streamJoinE:: WindowMaker α  ->     -- create windows from stream 1
+              WindowMaker β  ->     -- create windows from stream 2
+              JoinFilter α β ->     -- determines if this pair of
+                                    --   values meets join criteria
+              JoinMap α β gamma ->  -- combines the pair of values
+                                    --  into the output event
+              Stream α ->           -- 1st input stream
+              Stream β  ->          -- 2nd input stream
+              Stream gamma          -- the output stream
 ```
 
 The user provides a WindowMaker function for each of the two input streams. The Cartesian product of the values in the events in each window is then formed. The resulting pairs of values are then filtered using the user-defined JoinFilter function to determine if the pair of values meets the join criteria. A user-defined map function – JoinMap – is then applied to each conforming pair and the result appears on the output stream.
@@ -358,13 +355,13 @@ close:: Int -> Location -> Location -> Bool
 We also provide another join function – streamJoinW - that does not perform a cartesian product of the events in the two windows that are being joined. Instead, it operates on whole windows, applying a user defined function to the two windows of data taken from the two input streams. It is defined as:
 
 ```haskell
-streamJoinW:: WindowMaker alpha ->        -- create windows from stream 1
-              WindowMaker beta ->         -- create windows from stream 2
-              ([alpha]->[beta]->gamma) -> -- combines the two windows
-                                          --  into the output event
-              Stream alpha ->             -- 1st input stream
-              Stream beta  ->             -- 2nd input stream
-              Stream gamma                -- the output stream
+streamJoinW:: WindowMaker α ->     -- create windows from stream 1
+              WindowMaker β ->     -- create windows from stream 2
+              ([α]->[β]->gamma) -> -- combines the two windows
+                                   --  into the output event
+              Stream α ->          -- 1st input stream
+              Stream β ->          -- 2nd input stream
+              Stream gamma         -- the output stream
 ```
 
 This can be implemented using the core stream processing functions as:
@@ -383,9 +380,9 @@ Computer science thrives on recursion. However, a stream processing system compo
 
 
 ```haskell
-streamGraph  :: (Stream alpha->Stream beta)->   -- stream graph
-                Stream alpha ->                 -- input stream
-                Stream beta                     -- output stream
+streamGraph  :: (Stream α -> Stream β) ->   -- stream graph
+                Stream α ->                 -- input stream
+                Stream β                    -- output stream
 ```
 
 This can be implemented as:
@@ -404,13 +401,13 @@ streamGraph (\ss-> streamMap mf $ streamFilter ff ss)
 As streamGraph can operate on finite length streams (as well as infinite streams), it is useful to define another function that reduces a finite list:
 
 ```haskell
-streamReduce::(beta -> alpha -> beta) ->  -- the accumulator fn:
-                                           --  takes head of stream &
-                                           --  accumulator and computes
-                                           --  the new accumulator
-              beta ->                      -- initial accumulator value
-              Stream alpha ->              -- input stream
-              Stream beta                  -- output stream
+streamReduce::(β -> α -> β) ->  -- the accumulator fn:
+                                    --  takes head of stream &
+                                    --  accumulator and computes
+                                    --  the new accumulator
+              β ->              -- initial accumulator value
+              Stream α ->       -- input stream
+              Stream β          -- output stream
 ```
 The output is a stream with one Event - the result of reducing the list using the first parameter.
 
