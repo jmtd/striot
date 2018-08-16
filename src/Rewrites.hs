@@ -1,9 +1,16 @@
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
+
+module Rewrites (htf_thisModulesTests) where
+
+import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
 
 {-
     possible StreamGraph rewrites, via combination of operators
  -}
+
+main = htfMain htf_thisModulesTests
 
 -------------------------------------------------------------------------------
 -- utility functions
@@ -12,6 +19,9 @@ jClean = map (\(Event _ _ (Just v)) -> v)
 
 sA = [Event 0 Nothing (Just i)|i<-['a'..]]
 sB = [Event 0 Nothing (Just i)|i<-['0'..]]
+sW = streamWindow (chop 2) sB
+
+mkTest pre post stream = assertBool $ take 10 (pre stream) == take 10 (post stream)
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamFilter
@@ -23,7 +33,7 @@ g = (<= 'z')
 filterFilterPre  = (streamFilter g . streamFilter f) sB
 filterFilterPost = streamFilter (\x -> f x && g x) sB
 
-test_filterFilter = take 50 filterFilterPre == take 50 filterFilterPost
+test_filterFilter = assertBool $ take 50 filterFilterPre == take 50 filterFilterPost
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamFilterAcc
@@ -51,8 +61,9 @@ filterMapPost = (streamFilter (p . ff) . streamMap ff) sB
 filterMergePre  = streamMerge [streamFilter (>'a') sA, streamFilter (>'a') sB]
 filterMergePost = streamFilter (>'a') $ streamMerge [sA, sB]
 
--- false!
-test_filterMerge = take 10 filterMergePre == take 10 filterMergePost
+-- false! this only works if ordering is not important, or if we can re-order
+-- post merge (sort on a timestamp?)
+test_filterMerge = assertBool $ take 10 filterMergePre == take 10 filterMergePost
 
 -- streamFilter → streamJoin
 -- streamFilterAcc → streamFilter
@@ -74,7 +85,7 @@ mfp = (>'a')
 mapFilterPre  = (streamFilter mfp . streamMap mff) sB
 mapFilterPost = (streamMap mff . streamFilter (mfp . mff)) sB
 
-test_mapFilter = take 20 mapFilterPre == take 20 mapFilterPost
+test_mapFilter = assertBool $ take 20 mapFilterPre == take 20 mapFilterPost
 
 ------------------------------------------------------------------------------
 -- streamMap → streamFilterAcc
@@ -86,11 +97,20 @@ test_mapFilter = take 20 mapFilterPre == take 20 mapFilterPost
 mapMapPre  = streamMap succ . streamMap succ
 mapMapPost = streamMap (succ . succ)
 
-test_mapMap = take 20 (mapMapPre sA) == take 20 (mapMapPost sA)
+test_mapMap = assertBool $ take 20 (mapMapPre sA) == take 20 (mapMapPost sA)
 
 
 -- streamMap → streamScan
+
+------------------------------------------------------------------------------
 -- streamMap → streamWindow
+-- window . map f = map (map f) window
+
+mapWindowPre  = (streamWindow (chop 2) . streamMap succ) sA
+mapWindowPost = (streamMap (map succ) . streamWindow (chop 2)) sA
+
+test_mapWindow = assertBool $ take 10 mapWindowPre == take 10 mapWindowPost
+
 -- streamMap → streamExpand
 ------------------------------------------------------------------------------
 -- streamMap → streamMerge
@@ -101,9 +121,17 @@ test_mapMap = take 20 (mapMapPre sA) == take 20 (mapMapPost sA)
 mapMergePre  = streamMerge [(streamMap succ sA),(streamMap succ sB)]
 mapMergePost = streamMap succ $ streamMerge [sA,sB]
 
-test_mapMerge = take 50 mapMergePre == take 50 mapMergePost
+test_mapMerge = assertBool $ take 50 mapMergePre == take 50 mapMergePost
 
+------------------------------------------------------------------------------
 -- streamMap → streamJoin
+
+mapJoinPre  = streamJoin (streamMap succ sA) sB
+mapJoinPost = streamMap (\(x,y) -> (succ x, y)) (streamJoin sA sB)
+
+test_mapJoin = assertBool $ take 10 mapJoinPre == take 10 mapJoinPost
+
+------------------------------------------------------------------------------
 -- streamScan → streamFilter
 -- streamScan → streamFilterAcc
 -- streamScan → streamMap
@@ -117,7 +145,14 @@ test_mapMerge = take 50 mapMergePre == take 50 mapMergePost
 -- streamWindow → streamMap
 -- streamWindow → streamScan
 -- streamWindow → streamWindow
+
+-------------------------------------------------------------------------------
 -- streamWindow → streamExpand
+
+windowExpandPre  = (streamExpand . streamWindow (chop 2)) sA
+windowExpandPost = sA
+
+test_windowExpand = assertBool $ take 10 windowExpandPre == take 10 windowExpandPost
 
 -------------------------------------------------------------------------------
 -- streamWindow → streamMerge
@@ -146,15 +181,44 @@ windowMergePre = streamMerge [ streamWindow (chop 5) sA
 -- XXX can we make this point-free?
 windowMergePost = streamWindow frob (streamMerge [sA,sB])
 
-test_windowMerge = take 10 windowMergePre == take 10 windowMergePost
+test_windowMerge = assertBool $ take 10 windowMergePre == take 10 windowMergePost
 
 ------------------------------------------------------------------------------
 -- streamWindow → streamJoin
+
+------------------------------------------------------------------------------
 -- streamExpand → streamFilter
+
+expandFilterPre   = streamFilter f . streamExpand
+expandFilterPost  = streamExpand . streamMap (filter f)
+test_expandFilter = mkTest expandFilterPre expandFilterPost sW
+
+------------------------------------------------------------------------------
 -- streamExpand → streamFilterAcc
+
+------------------------------------------------------------------------------
 -- streamExpand → streamMap
+
+expandMapPre   = streamMap succ . streamExpand
+expandMapPost  = streamExpand . streamMap (map succ)
+test_expandMap = mkTest expandMapPre expandMapPost sW
+
+------------------------------------------------------------------------------
 -- streamExpand → streamScan
+
+------------------------------------------------------------------------------
 -- streamExpand → streamWindow
+
+-- in the case where the window size coming in matches that being constructed,
+-- this is elimination
+
+expandWindowPre1  = streamWindow (chop 2) . streamExpand
+expandWindowPost1 = id
+test_expandWindow1= mkTest expandWindowPre1 expandWindowPost1 sW
+
+-- what about other cases?
+
+------------------------------------------------------------------------------
 -- streamExpand → streamExpand
 -- streamExpand → streamMerge
 -- streamExpand → streamJoin
@@ -166,7 +230,7 @@ mergeFilterPre  = streamFilter (>'a') $ streamMerge [sA, sB]
 mergeFilterPost = streamMerge [streamFilter (>'a') sA, streamFilter (>'a') sB]
 
 -- false!
-test_mergeFilter = take 10 mergeFilterPre == take 10 mergeFilterPost
+test_mergeFilter = assertBool $ take 10 mergeFilterPre == take 10 mergeFilterPost
 
 -- streamMerge → streamFilterAcc
 -- streamMerge → streamMap
