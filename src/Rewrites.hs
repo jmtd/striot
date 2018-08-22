@@ -100,50 +100,29 @@ pred1 = (>=)   -- a -> b -> Bool
 
 fAccfAccPre = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
 
-fAccfAccPost = streamFilterAcc
-    (\(x,y) v -> (accfn1 x v, accfn2 y v))
+-- mkfAccFuse: builds a fused filterAcc function
+-- XXX same if/then for accfn1 branch?
+-- argument order assumes data flow left-to-right, i.e. the opposite way to
+-- function composition
+-- XXX test that b and can be distinct types
+mkfAccFuse :: (b -> a -> b) -> b -> (a -> b -> Bool)
+           -> (c -> a -> c) -> c -> (a -> c -> Bool)
+           -> Stream a -> Stream a
+mkfAccFuse accfn1 acc1 pred1 accfn2 acc2 pred2 = streamFilterAcc
+    (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
     (acc1,acc2)
     (\x (y,z) -> pred1 x y && pred2 x z)
 
-prop_fAccfAcc s = fAccfAccPre s == fAccfAccPost s
+fAccfAccPost = mkfAccFuse accfn1 acc1 pred1 accfn2 acc2 pred2
 
--- falsified by
---      '\652433', '\SI', '\SI'
---      '\SI' < '\652433'
+prop_fAccfAcc1 s = fAccfAccPre s == fAccfAccPost s
 
-{-
-    by-hand application of fusion
-        \652433 -> acc becomes (\652433, \652433)
-                pred: (pred1 \652433 0 && pred2 \652433 0)
-                      (true && true) => true
-        \652433 accepted
-        \SI:
-            (pred1 \SI \652433 && pred2 \SI \652433)
-            (\SI >= \652433 && \SI /= \652433)
-            (false && _) => False
-        \SI rejected
-        acc becomes (\SI, \SI)
-        \SI:
-            (\SI >= \SI && \SI /= \SI)
-            false
-        \SI rejected
-        total outcome: \652433
-
-    memory appl of accfn1... etc
-        \652433 >= True accfn1 becomes \652433 value passed
-        \SI >= \652433 False rejected, accfn1 becomes \SI
-        \SI >= \SI True accepted
-    now accfn2:
-        \652433 /= 0 - passes, acc2 now \652433
-        \SI /= \652433 - passes, acc2 is now \SI
-        \SI /= \SI - fails
-    total outcome:
-        \652433 \SI
-
-
--}
-
--- "Just (TFGenR 000018ADF128DE07000000003B9ACA00000000000000E3EE0000075DB17B49C0 0 4503599627370494 52 0,50)"
+-- reverse composition to the above. an attempt to catch/prove that an
+-- additional if/else is needed in the fused accumulator, except this
+-- passes!
+fAccfAccPre2 = streamFilterAcc accfn1 acc1 pred1 . streamFilterAcc accfn2 acc2 pred2
+fAccfAccPost2 = mkfAccFuse accfn2 acc2 pred2 accfn1 acc1 pred1
+prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 
 ---------------------------------------------------------------------------------------
 -- streamFilterAcc → streamMap
@@ -357,6 +336,7 @@ mergeFilterPre  s = streamFilter f $ streamMerge [sA, s]
 mergeFilterPost s = streamMerge [streamFilter f sA, streamFilter f s]
 
 -- false! (ordering will have changed)
+-- XXX this seems very expensive to evaluate
 prop_mergeFilter s = mergeFilterPre s == mergeFilterPost s
 
 -- streamMerge → streamFilterAcc
