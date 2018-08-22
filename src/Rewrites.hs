@@ -84,7 +84,68 @@ pxxp_filterMerge s = filterMergePre s == filterMergePost s
 -- Nothing
 
 -- streamFilterAcc → streamFilter
+
+---------------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilterAcc
+
+-- alternating values only
+accfn2 _ v = v
+acc2 = '\NUL'
+pred2 = (/=)
+
+-- increasing values only
+accfn1 a v = v -- b -> a -> b
+acc1 = '\NUL'  -- b
+pred1 = (>=)   -- a -> b -> Bool
+
+fAccfAccPre = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
+
+fAccfAccPost = streamFilterAcc
+    (\(x,y) v -> (accfn1 x v, accfn2 y v))
+    (acc1,acc2)
+    (\x (y,z) -> pred1 x y && pred2 x z)
+
+prop_fAccfAcc s = fAccfAccPre s == fAccfAccPost s
+
+-- falsified by
+--      '\652433', '\SI', '\SI'
+--      '\SI' < '\652433'
+
+{-
+    by-hand application of fusion
+        \652433 -> acc becomes (\652433, \652433)
+                pred: (pred1 \652433 0 && pred2 \652433 0)
+                      (true && true) => true
+        \652433 accepted
+        \SI:
+            (pred1 \SI \652433 && pred2 \SI \652433)
+            (\SI >= \652433 && \SI /= \652433)
+            (false && _) => False
+        \SI rejected
+        acc becomes (\SI, \SI)
+        \SI:
+            (\SI >= \SI && \SI /= \SI)
+            false
+        \SI rejected
+        total outcome: \652433
+
+    memory appl of accfn1... etc
+        \652433 >= True accfn1 becomes \652433 value passed
+        \SI >= \652433 False rejected, accfn1 becomes \SI
+        \SI >= \SI True accepted
+    now accfn2:
+        \652433 /= 0 - passes, acc2 now \652433
+        \SI /= \652433 - passes, acc2 is now \SI
+        \SI /= \SI - fails
+    total outcome:
+        \652433 \SI
+
+
+-}
+
+-- "Just (TFGenR 000018ADF128DE07000000003B9ACA00000000000000E3EE0000075DB17B49C0 0 4503599627370494 52 0,50)"
+
+---------------------------------------------------------------------------------------
 -- streamFilterAcc → streamMap
 -- streamFilterAcc → streamScan
 -- streamFilterAcc → streamWindow
@@ -259,26 +320,44 @@ expandWindowPre1  = streamWindow (chop 2) . streamExpand
 expandWindowPost1 = id
 test_expandWindow1= mkTest expandWindowPre1 expandWindowPost1 sW
 
--- fails! because the incoming data is not consistent window size nor matches
--- 2
-prop_expandWindow1 :: Stream [Char] -> Bool
-prop_expandWindow1 s = expandWindowPre1 s == expandWindowPost1 s
+-- fails! because the incoming data is not consistent window size of 2
+--prop_expandWindow1 :: Stream [Char] -> Bool
+--prop_expandWindow1 s = expandWindowPre1 s == expandWindowPost1 s
 
 -- what about other cases?
+-- (explore perhaps using one of the accumulators?)
 
 ------------------------------------------------------------------------------
 -- streamExpand → streamExpand
+
+-- Nothing.
+
+------------------------------------------------------------------------------
 -- streamExpand → streamMerge
+
+expandMergePre = streamMerge [ streamExpand sW, streamExpand sW ]
+
+expandMergePost = streamExpand (streamMerge [ sW, sW ])
+
+-- fails: ordering differs
+test_expandMerge = assertBool $ take 10 expandMergePre
+                             == take 10 expandMergePost
+{-
+    expandMergePre => "0011223344"...
+    expandMergePost=> "0101232345"...
+ -}
+
+------------------------------------------------------------------------------
 -- streamExpand → streamJoin
 
 ------------------------------------------------------------------------------
 -- streamMerge → streamFilter
 
-mergeFilterPre  = streamFilter (>'a') $ streamMerge [sA, sB]
-mergeFilterPost = streamMerge [streamFilter (>'a') sA, streamFilter (>'a') sB]
+mergeFilterPre  s = streamFilter f $ streamMerge [sA, s]
+mergeFilterPost s = streamMerge [streamFilter f sA, streamFilter f s]
 
 -- false! (ordering will have changed)
-test_mergeFilter = assertBool $ take 10 mergeFilterPre == take 10 mergeFilterPost
+prop_mergeFilter s = mergeFilterPre s == mergeFilterPost s
 
 -- streamMerge → streamFilterAcc
 -- streamMerge → streamMap
