@@ -94,17 +94,14 @@ acc2 = '\NUL'
 pred2 = (/=)
 
 -- increasing values only
-accfn1 a v = v -- b -> a -> b
-acc1 = '\NUL'  -- b
-pred1 = (>=)   -- a -> b -> Bool
+accfn1 _ v = v
+acc1 = '\NUL'
+pred1 = (>=)
 
-fAccfAccPre = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
-
--- mkfAccFuse: builds a fused filterAcc function
--- XXX same if/then for accfn1 branch?
+-- build a fused filterAcc function
 -- argument order assumes data flow left-to-right, i.e. the opposite way to
 -- function composition
--- XXX test that b and can be distinct types
+-- XXX test that b and c can be distinct types
 mkfAccFuse :: (b -> a -> b) -> b -> (a -> b -> Bool)
            -> (c -> a -> c) -> c -> (a -> c -> Bool)
            -> Stream a -> Stream a
@@ -113,15 +110,13 @@ mkfAccFuse accfn1 acc1 pred1 accfn2 acc2 pred2 = streamFilterAcc
     (acc1,acc2)
     (\x (y,z) -> pred1 x y && pred2 x z)
 
-fAccfAccPost = mkfAccFuse accfn1 acc1 pred1 accfn2 acc2 pred2
-
+fAccfAccPre      = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
+fAccfAccPost     = mkfAccFuse accfn1 acc1 pred1 accfn2 acc2 pred2
 prop_fAccfAcc1 s = fAccfAccPre s == fAccfAccPost s
 
--- reverse composition to the above. an attempt to catch/prove that an
--- additional if/else is needed in the fused accumulator, except this
--- passes!
-fAccfAccPre2 = streamFilterAcc accfn1 acc1 pred1 . streamFilterAcc accfn2 acc2 pred2
-fAccfAccPost2 = mkfAccFuse accfn2 acc2 pred2 accfn1 acc1 pred1
+-- reverse order
+fAccfAccPre2     = streamFilterAcc accfn1 acc1 pred1 . streamFilterAcc accfn2 acc2 pred2
+fAccfAccPost2    = mkfAccFuse accfn2 acc2 pred2 accfn1 acc1 pred1
 prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 
 ---------------------------------------------------------------------------------------
