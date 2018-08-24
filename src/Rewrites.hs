@@ -45,6 +45,20 @@ prop_filterFilter s = filterFilterPre s == filterFilterPost s
 -------------------------------------------------------------------------------
 -- streamFilter → streamFilterAcc
 
+filterFilterAccPre = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
+
+-- first promote the streamFilter into a streamFilterAcc
+promoted = streamFilterAcc
+    (\_ v -> v)
+    '0' -- fixes the types here
+    (\v _  -> g v)
+
+prop_promotedFilter s = streamFilter g s == promoted s
+
+filterFilterAccPost = mkfAccFuse (\_ v -> v) '0' (\v _ -> g v) accfn1 acc1 pred1
+
+prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
+
 -------------------------------------------------------------------------------
 -- streamFilter → streamMap
 -- streamMap f . streamFilter p = streamFilter (p . f) . streamMap f
@@ -83,9 +97,15 @@ pxxp_filterMerge s = filterMergePre s == filterMergePost s
 
 -- Nothing
 
+------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilter
+-- see the inverse for details
 
----------------------------------------------------------------------------------------
+filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterPost    = mkfAccFuse accfn1 acc1 pred1 (\_ v -> v) '0' (\v _ -> g v)
+prop_filterAccFilter s = filterFilterAccPre s == filterFilterAccPost s
+
+------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilterAcc
 
 -- alternating values only
