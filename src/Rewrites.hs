@@ -28,18 +28,15 @@ instance Arbitrary a => Arbitrary (Event a) where
 
 mkTest pre post stream = assertBool $ take 10 (pre stream) == take 10 (post stream)
 
--------------------------------------------------------------------------------
--- streamFilter → streamFilter
--- streamFilter g . streamFilter f = streamFilter (\x -> g x && f x)
-
+-- filter predicates
 f = (>= 'a')
 g = (<= 'z')
 
-filterFilterPre  = streamFilter g . streamFilter f
-filterFilterPost = streamFilter (\x -> f x && g x)
+-------------------------------------------------------------------------------
+-- streamFilter → streamFilter
 
-test_filterFilter = mkTest filterFilterPre filterFilterPost sB
-
+filterFilterPre     = streamFilter g . streamFilter f
+filterFilterPost    = streamFilter (\x -> f x && g x)
 prop_filterFilter s = filterFilterPre s == filterFilterPost s
 
 -------------------------------------------------------------------------------
@@ -277,7 +274,7 @@ windowMergePost s = streamWindow frob (streamMerge [sA,s])
 
 test_windowMerge = assertBool $ take 10 (windowMergePre sB) == take 10 (windowMergePost sB)
 
--- doesn't work
+-- doesn't work: failing on an empty list?
 prop_windowMerge s = windowMergePre s == windowMergePost s
 
 ------------------------------------------------------------------------------
