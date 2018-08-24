@@ -307,13 +307,15 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 -- in the case where the window size coming in matches that being constructed,
 -- this is elimination
 
-expandWindowPre1  = streamWindow (chop 2) . streamExpand
+expandWindowPre1 n= streamWindow (chop n) . streamExpand
 expandWindowPost1 = id
-test_expandWindow1= mkTest expandWindowPre1 expandWindowPost1 sW
 
--- fails! because the incoming data is not consistent window size of 2
---prop_expandWindow1 :: Stream [Char] -> Bool
---prop_expandWindow1 s = expandWindowPre1 s == expandWindowPost1 s
+-- XXX it would be nice to use quickCheck to choose a window size, but we need
+-- to limit it to very small numbers (<10 or so) and that's tricky to specify;
+-- and HTF does not support QuickCheck's guard scheme n < 10 ==> ...
+prop_expandWindow1 :: Stream Char -> Bool
+prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 w
+    where w = streamWindow (chop 2) s
 
 -- what about other cases?
 -- (explore perhaps using one of the accumulators?)
