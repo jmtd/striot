@@ -2,6 +2,7 @@
 
 module Rewrites (htf_thisModulesTests) where
 
+import Data.List (sort)
 import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
@@ -25,8 +26,6 @@ instance Arbitrary a => Arbitrary (Event a) where
     arbitrary = do
         c <- arbitrary
         return $ Event 0 Nothing (Just c)
-
-mkTest pre post stream = assertBool $ take 10 (pre stream) == take 10 (post stream)
 
 -- filter predicates
 f = (>= 'a')
@@ -85,9 +84,10 @@ filterMergePost s = streamFilter f $ streamMerge [sA, s]
 
 -- false! this only works if ordering is not important, or if we can re-order
 -- post merge (sort on a timestamp?)
-txxt_filterMerge = assertBool $ take 10 (filterMergePre sB) == take 10 (filterMergePost sB)
+txxt_filterMerge = assertBool $ sort (take 10 (filterMergePre sB))
+                             == sort (take 10 (filterMergePost sB))
 -- these are also very slow to execute
-pxxp_filterMerge s = filterMergePre s == filterMergePost s
+pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 
 ------------------------------------------------------------------------------
 -- streamFilter → streamJoin
@@ -136,9 +136,17 @@ fAccfAccPre2     = streamFilterAcc accfn1 acc1 pred1 . streamFilterAcc accfn2 ac
 fAccfAccPost2    = mkfAccFuse accfn2 acc2 pred2 accfn1 acc1 pred1
 prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 
----------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- streamFilterAcc → streamMap
+
+-- Nothing -- see discussion in streamFilter → streamMap
+
+-------------------------------------------------------------------------------
 -- streamFilterAcc → streamScan
+
+-- Nothing -- see discussion in streamFilter → streamMap
+
+-------------------------------------------------------------------------------
 -- streamFilterAcc → streamWindow
 -- streamFilterAcc → streamExpand
 -- streamFilterAcc → streamMerge
@@ -208,7 +216,33 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 -- streamScan → streamFilter
 -- streamScan → streamFilterAcc
 -- streamScan → streamMap
+------------------------------------------------------------------------------
 -- streamScan → streamScan
+
+-- this doesn't work yet. the signature of the impl of mkScanFuse below is
+-- Stream (a,a1) -> Stream (t->t, t1 -> a1); consuming and producing a tuple.
+-- the problem is the accumulator is not hidden, it's the return value of the
+-- function, so we can't easily hide our work!
+
+--mkScanFuse :: (b -> a -> b) -> b
+           -- -> (c -> b -> c) -> c
+           -- -> Stream a -> Stream b
+------mkScanFuse f1 acc1 f2 acc2 = streamScan
+    --f2.(f1 acc1) acc2
+
+--    (\v (x,y) -> (f1 x, f2 y))
+--    (acc1, acc2)
+
+-- (b -> a -> b) -> b           -> Sa -> Sb
+-- (c -> b -> c) -> c           -> Sb -> Sc
+
+foo c v = if c `mod` 10==0 then 1 else v
+bar c v = c + 1
+
+scanScanPre = streamScan foo 1 . streamScan bar 0
+--scanScanPost = mkScanFuse 
+
+------------------------------------------------------------------------------
 -- streamScan → streamWindow
 -- streamScan → streamExpand
 -- streamScan → streamMerge
@@ -328,13 +362,17 @@ prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 w
 ------------------------------------------------------------------------------
 -- streamExpand → streamMerge
 
-expandMergePre = streamMerge [ streamExpand sW, streamExpand sW ]
+expandMergePre s = streamMerge [ streamExpand sW, streamExpand s ]
 
-expandMergePost = streamExpand (streamMerge [ sW, sW ])
+expandMergePost s = streamExpand (streamMerge [ sW, s ])
 
--- fails: ordering differs
-test_expandMerge = assertBool $ take 10 expandMergePre
-                             == take 10 expandMergePost
+-- ordering differs:
+-- map expandMerge [2..20] => 011101110111...
+expandMerge n = sort (take n (expandMergePre sW))
+             == sort (take n (expandMergePost sW))
+test_expandMerge = assertBool $ expandMerge 20
+-- this will run for a long time
+pxxp_expandMerge s = sort(expandMergePre s) == sort(expandMergePost s)
 {-
     expandMergePre => "0011223344"...
     expandMergePost=> "0101232345"...
@@ -349,22 +387,50 @@ test_expandMerge = assertBool $ take 10 expandMergePre
 mergeFilterPre  s = streamFilter f $ streamMerge [sA, s]
 mergeFilterPost s = streamMerge [streamFilter f sA, streamFilter f s]
 
--- false! (ordering will have changed)
--- XXX this seems very expensive to evaluate
-prop_mergeFilter s = mergeFilterPre s == mergeFilterPost s
+-- *very* expensive to evaluate
+pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
+------------------------------------------------------------------------------
 -- streamMerge → streamFilterAcc
+------------------------------------------------------------------------------
 -- streamMerge → streamMap
+
+mergeMapPre s  = streamMap succ $ streamMerge [sA, s]
+mergeMapPost s = streamMerge [streamMap succ sA, streamMap succ s]
+
+-- *very* expensive to evaluate
+pxxp_mergeMap s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
+
+------------------------------------------------------------------------------
 -- streamMerge → streamScan
 -- streamMerge → streamWindow
+------------------------------------------------------------------------------
 -- streamMerge → streamExpand
+
+mergeExpandPre s = streamExpand (streamMerge [w1,w2]) where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+-- *very* expensive to evaluate
+pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
+
+------------------------------------------------------------------------------
 -- streamMerge → streamMerge
+
+mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
+mergeMergePost c = streamMerge [sA, sB, c]
+
+prop_mergeMerge s = sort (mergeMergePre s)
+                 == sort (mergeMergePost s)
+
+------------------------------------------------------------------------------
 -- streamMerge → streamJoin
--- streamJoin → streamFilter
--- streamJoin → streamFilterAcc
--- streamJoin → streamMap
--- streamJoin → streamScan
--- streamJoin → streamWindow
--- streamJoin → streamExpand
--- streamJoin → streamMerge
--- streamJoin → streamJoin
+------------------------------------------------------------------------------
+-- streamJoin → streamFilter, streamFilterAcc, streamMap, streamScan,
+--              streamWindow, streamExpand, streamMerge, streamJoin
+--
+-- Nothing possible.
