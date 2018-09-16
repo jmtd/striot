@@ -33,6 +33,7 @@ g = (<= 'z')
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamFilter
+-- 1
 
 filterFilterPre     = streamFilter g . streamFilter f
 filterFilterPost    = streamFilter (\x -> f x && g x)
@@ -40,6 +41,7 @@ prop_filterFilter s = filterFilterPre s == filterFilterPost s
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamFilterAcc
+-- 2
 
 filterFilterAccPre = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
 
@@ -97,6 +99,7 @@ pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 ------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilter
 -- see the inverse for details
+-- 3
 
 filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
 filterAccFilterPost    = mkfAccFuse accfn1 acc1 pred1 (\_ v -> v) '0' (\v _ -> g v)
@@ -104,6 +107,7 @@ prop_filterAccFilter s = filterFilterAccPre s == filterFilterAccPost s
 
 ------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilterAcc
+-- 4
 
 -- alternating values only
 accfn2 _ v = v
@@ -156,6 +160,8 @@ prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 -- streamMap → streamFilter
 -- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
 -- some kind of trade off depending on how selective p is?
+-- 5
+
 mff = succ
 
 mapFilterPre     = streamFilter f . streamMap mff
@@ -168,6 +174,7 @@ prop_mapFilter s = mapFilterPre s == mapFilterPost s
 ------------------------------------------------------------------------------
 -- streamMap → streamMap
 -- fuse
+-- 6
 
 mapMapPre :: Stream Char -> Stream Char
 mapMapPre     = streamMap succ . streamMap succ
@@ -180,6 +187,7 @@ prop_mapMap s = mapMapPre s == mapMapPost s
 ------------------------------------------------------------------------------
 -- streamMap → streamWindow
 -- window . map f = map (map f) window
+-- 7
 
 mapWindowPre :: Stream Char -> Stream [Char]
 mapWindowPre     = streamWindow (chop 2) . streamMap succ
@@ -201,11 +209,12 @@ mapMergePre  s = streamMerge [(streamMap succ sA),(streamMap succ s)]
 mapMergePost s = streamMap succ $ streamMerge [sA,s]
 
 test_mapMerge = assertBool $ take 50 (mapMergePre sB) == take 50 (mapMergePost sB)
--- this catches a failure!
+-- this catches a failure! (empty list?)
 prop_mapMerge s = mapMapPre s == mapMergePost s
 
 ------------------------------------------------------------------------------
 -- streamMap → streamJoin
+-- 8
 
 mapJoinPre     = streamJoin sA . streamMap succ
 mapJoinPost    = streamMap (\(x,y) -> (x, succ y)) . streamJoin sA
@@ -271,6 +280,7 @@ scanScanPre = streamScan foo 1 . streamScan bar 0
 
 -------------------------------------------------------------------------------
 -- streamWindow → streamExpand
+-- 9
 
 windowExpandPre n    = streamExpand . streamWindow (chop n)
 prop_windowExpand1  :: Stream Char -> Bool
@@ -316,6 +326,7 @@ prop_windowMerge s = windowMergePre s == windowMergePost s
 
 ------------------------------------------------------------------------------
 -- streamExpand → streamFilter
+-- 10
 
 expandFilterPre     = streamFilter f . streamExpand
 expandFilterPost    = streamExpand . streamMap (filter f)
@@ -326,6 +337,7 @@ prop_expandFilter s = expandFilterPre s == expandFilterPost s
 
 ------------------------------------------------------------------------------
 -- streamExpand → streamMap
+-- 11
 
 expandMapPre     = streamMap succ . streamExpand
 expandMapPost    = streamExpand . streamMap (map succ)
@@ -337,6 +349,7 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 
 ------------------------------------------------------------------------------
 -- streamExpand → streamWindow
+-- 12
 
 -- in the case where the window size coming in matches that being constructed,
 -- this is elimination
@@ -387,6 +400,8 @@ pxxp_expandMerge s = sort(expandMergePre s) == sort(expandMergePost s)
 mergeFilterPre  s = streamFilter f $ streamMerge [sA, s]
 mergeFilterPost s = streamMerge [streamFilter f sA, streamFilter f s]
 
+-- XXX ordering not preserved?
+
 -- *very* expensive to evaluate
 pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
@@ -397,6 +412,8 @@ pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
 mergeMapPre s  = streamMap succ $ streamMerge [sA, s]
 mergeMapPost s = streamMerge [streamMap succ sA, streamMap succ s]
+
+-- XXX ordering not preserved?
 
 -- *very* expensive to evaluate
 pxxp_mergeMap s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
@@ -424,7 +441,8 @@ pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
 mergeMergePost c = streamMerge [sA, sB, c]
 
-prop_mergeMerge s = sort (mergeMergePre s)
+-- passes but very expensive
+pxxp_mergeMerge s = sort (mergeMergePre s)
                  == sort (mergeMergePost s)
 
 ------------------------------------------------------------------------------
