@@ -398,10 +398,10 @@ expandMergePost s = streamExpand (streamMerge [ sW, s ])
 -- map expandMerge [2..20] => 011101110111...
 expandMerge n = sort (take n (expandMergePre sW))
              == sort (take n (expandMergePost sW))
--- XXX: but does it pass?
+-- passes
 test_expandMerge = assertBool $ expandMerge 20
 -- this will run for a long time
--- XXX: but does it pass?
+-- passes
 pxxp_expandMerge s = sort(expandMergePre s) == sort(expandMergePost s)
 {-
     expandMergePre => "0011223344"...
