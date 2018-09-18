@@ -48,7 +48,7 @@ filterFilterAccPre = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
 -- first promote the streamFilter into a streamFilterAcc
 promoted = streamFilterAcc
     (\_ v -> v)
-    '0' -- fixes the types here
+    '0' -- XXX: fixes the types here
     (\v _  -> g v)
 
 prop_promotedFilter s = streamFilter g s == promoted s
@@ -56,6 +56,20 @@ prop_promotedFilter s = streamFilter g s == promoted s
 filterFilterAccPost = mkfAccFuse (\_ v -> v) '0' (\v _ -> g v) accfn1 acc1 pred1
 
 prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
+
+-- this is to demonstrate that the type of the dummy accumulator for the promoted
+-- streamFilter is unimportant and does not need to match the type of the other
+-- accumulator
+-- this fails! pred1 forces c and a to be the same type (Char)
+
+-- g ::  Char -> Bool
+
+--filterFilterAccPost2 = mkfAccFuse (\_ v -> v) (0::Int) (\v _ -> g v) accfn1 acc1 pred1
+--                                 b  a    b    b        a b    Bool c-a-c   c   a-c-Bool
+--                                                                  c == a due to >=
+
+
+--prop_filterFilterAcc2 s = filterFilterAccPre s == filterFilterAccPost2 s
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamMap
@@ -123,6 +137,7 @@ pred1 = (>=)
 -- argument order assumes data flow left-to-right, i.e. the opposite way to
 -- function composition
 -- XXX test that b and c can be distinct types
+-- XXX currently failing! see filterFilterAccPost2
 mkfAccFuse :: (b -> a -> b) -> b -> (a -> b -> Bool)
            -> (c -> a -> c) -> c -> (a -> c -> Bool)
            -> Stream a -> Stream a
@@ -209,7 +224,7 @@ mapMergePre  s = streamMerge [(streamMap succ sA),(streamMap succ s)]
 mapMergePost s = streamMap succ $ streamMerge [sA,s]
 
 test_mapMerge = assertBool $ take 50 (mapMergePre sB) == take 50 (mapMergePost sB)
--- this catches a failure! (empty list?)
+-- this catches a failure! (empty list?) XXX
 prop_mapMerge s = mapMapPre s == mapMergePost s
 
 ------------------------------------------------------------------------------
@@ -383,8 +398,10 @@ expandMergePost s = streamExpand (streamMerge [ sW, s ])
 -- map expandMerge [2..20] => 011101110111...
 expandMerge n = sort (take n (expandMergePre sW))
              == sort (take n (expandMergePost sW))
+-- XXX: but does it pass?
 test_expandMerge = assertBool $ expandMerge 20
 -- this will run for a long time
+-- XXX: but does it pass?
 pxxp_expandMerge s = sort(expandMergePre s) == sort(expandMergePost s)
 {-
     expandMergePre => "0011223344"...
@@ -403,6 +420,7 @@ mergeFilterPost s = streamMerge [streamFilter f sA, streamFilter f s]
 -- XXX ordering not preserved?
 
 -- *very* expensive to evaluate
+-- XXX does it pass?
 pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
 ------------------------------------------------------------------------------
@@ -414,8 +432,8 @@ mergeMapPre s  = streamMap succ $ streamMerge [sA, s]
 mergeMapPost s = streamMerge [streamMap succ sA, streamMap succ s]
 
 -- XXX ordering not preserved?
-
 -- *very* expensive to evaluate
+-- XXX does it pass?
 pxxp_mergeMap s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
 ------------------------------------------------------------------------------
@@ -433,6 +451,7 @@ mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
     w2 = streamWindow (chop 2) s
 
 -- *very* expensive to evaluate
+-- passes
 pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 
 ------------------------------------------------------------------------------
