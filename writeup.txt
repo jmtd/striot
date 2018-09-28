@@ -37,6 +37,13 @@ selection of operators
     streamMerge     :: Stream [a] -> Stream a
     streamJoin      :: Stream a -> Stream b -> Stream (a,b)
 
+TODO
+^^^^
+
+define evaluation/description criteria; including
+    * inversion
+    * decomposable
+
 Method
 ------
 
@@ -90,14 +97,22 @@ TODO
 
 filter promotion to filterAcc: the technique used fixes the type of the
 spare accumulator (in this case to Char). This is probably not
-necessary, and might point at a wider problem. 
+necessary, and might point at a wider problem.
+
+describe inversion caveat: we would not normally expect to be able to
+reason about the composition of higher-order-function parameters, such
+as filter predicates. E.g. with rule 13 below
+
+    13. filter (\x -> f x && g x) = filter f . filter g
+
+This is only applicable if we can decompose the predicate into a lambda
+and further into two sub-predicates.
 
 Results
 -------
 
      1. filter f . filter g = filter (\x -> f x && g x)
-        total; fusion
-    13. invertible with decomposition caveat
+        total; fusion; invertible with decomposition caveat (13)
 
      2, filter f . filterAcc  / filterAcc  . filter f
      3, promote filter f => filterAcc, then
@@ -105,43 +120,57 @@ Results
         (partial: type unification issue; fusion)
 
      5. streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
-        total. efficiency of RHS depends on selectivity of p and
-        relative cost of evaluating p and f. invertible:
-        streamMap f . streamFilter (p . f) = streamFilter p . streamMap f
-    14. inversion caveat: we would not normally expect to receive (p . f)
-        in a decomposable form.
+        total.
+        efficiency of RHS:
+        If p is highly selective, then the overhead of evaluating f
+        twice per selected event may be lower than the savings made by
+        reducing the list de/reconstruction overhead of streamMap.
+        invertible with caveat (14)
 
      6. streamMap f . streamMap g = streamMap (f . g)
         total; fusion
-        invertible with decomposition caveat
-    15. streamMap (f . g) = streamMap f . streamMap g
+        invertible with decomposition caveat (15)
 
      7. streamWindow w . streamMap f = streamMap (map f) . streamWindow w
         total
 
      8. streamJoin s1 . streamMap f = streamMap (\(x,y) -> (x, f y)) . streamJoin s1
         total
-        invertible with decomposition caveat:
-    16. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
+        invertible with decomposition caveat (16)
 
      9. streamExpand . streamWindow _ = id
         elimination; total
 
     10. streamFilter f . streamExpand = streamExpand . streamMap (filter f)
-        total. invertible with usual caveat
-    17. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
-        (XXX it would be good to write QuickCheck properties for the inversions)
+        total. invertible with usual caveat (17)
 
     11. streamMap f . streamExpand = streamExpand . streamMap (map f)
-        total. invertible with usual caveat
-    18. streamExpand . streamMap (map f) = streamMap f . streamExpand
+        total. invertible with usual caveat (18)
 
     12. streamWindow w . streamExpand = id
         elimination. XXX only tested w = chop n
 
+Many of the above rules are invertible, producing the following
+additional rules:
+
+    13. filter (\x -> f x && g x) = filter f . filter g
+
+    14. streamMap f . streamFilter (p . f) = streamFilter p . streamMap f
+        inversion caveat: we would not normally expect to receive (p . f)
+        in a decomposable form.
+
+    15. streamMap (f . g) = streamMap f . streamMap g
+
+    16. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
+
+    17. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
+        (XXX it would be good to write QuickCheck properties for the inversions)
+
+    18. streamExpand . streamMap (map f) = streamMap f . streamExpand
+
 10 rules
 12 with filter/filterAcc separated out
-18 adding inversions (with  caveats)
+18 adding inversions (with caveats)
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (XXX: Why?)
