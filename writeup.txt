@@ -108,6 +108,12 @@ as filter predicates. E.g. with rule 13 below
 This is only applicable if we can decompose the predicate into a lambda
 and further into two sub-predicates.
 
+Classification of non-order-preserving rewrites: whether the re-ordering
+is determined *internally* or *externally*. Internally means that
+the re-ordering is entirely determined by the composition of stream
+operators; external means that it is dependent on one of the externally
+supplied arguments, such as the predicate supplied to streamFilter.
+
 Results
 -------
 

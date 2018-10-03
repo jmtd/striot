@@ -100,6 +100,9 @@ filterMergePost s = streamFilter f $ streamMerge [sA, s]
 
 -- false! this only works if ordering is not important, or if we can re-order
 -- post merge (sort on a timestamp?)
+
+-- reordering is externally dependent on the streamFilter predicate
+
 txxt_filterMerge = assertBool $ sort (take 10 (filterMergePre sB))
                              == sort (take 10 (filterMergePost sB))
 -- these are also very slow to execute
@@ -395,6 +398,7 @@ expandMergePre s = streamMerge [ streamExpand sW, streamExpand s ]
 expandMergePost s = streamExpand (streamMerge [ sW, s ])
 
 -- ordering differs:
+-- "internal" ordering difference?
 -- map expandMerge [2..20] => 011101110111...
 expandMerge n = sort (take n (expandMergePre sW))
              == sort (take n (expandMergePost sW))
@@ -420,7 +424,7 @@ mergeFilterPost s = streamMerge [streamFilter f sA, streamFilter f s]
 -- XXX ordering not preserved?
 
 -- *very* expensive to evaluate
--- XXX does it pass?
+-- passes
 pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
 ------------------------------------------------------------------------------
@@ -433,7 +437,7 @@ mergeMapPost s = streamMerge [streamMap succ sA, streamMap succ s]
 
 -- XXX ordering not preserved?
 -- *very* expensive to evaluate
--- XXX does it pass?
+-- passes
 pxxp_mergeMap s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 
 ------------------------------------------------------------------------------
