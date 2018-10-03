@@ -156,27 +156,34 @@ Results
     12. streamWindow w . streamExpand = id
         elimination. XXX only tested w = chop n
 
+    13. streamMap f $ streamMerge [s1, s2]
+        = streamMerge [streamMap f s1, streamMap f s2]
+        total, invertible
+
 Many of the above rules are invertible, producing the following
 additional rules:
 
-    13. filter (\x -> f x && g x) = filter f . filter g
+    14. filter (\x -> f x && g x) = filter f . filter g
 
-    14. streamMap f . streamFilter (p . f) = streamFilter p . streamMap f
+    15. streamMap f . streamFilter (p . f) = streamFilter p . streamMap f
         inversion caveat: we would not normally expect to receive (p . f)
         in a decomposable form.
 
-    15. streamMap (f . g) = streamMap f . streamMap g
+    16. streamMap (f . g) = streamMap f . streamMap g
 
-    16. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
+    17. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
 
-    17. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
+    18. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    18. streamExpand . streamMap (map f) = streamMap f . streamExpand
+    19. streamExpand . streamMap (map f) = streamMap f . streamExpand
 
-10 rules
-12 with filter/filterAcc separated out
-18 adding inversions (with caveats)
+    20. streamMerge [streamMap f s1, streamMap f s2]
+        = streamMap f $ streamMerge [s1, s2]
+
+11 rules
+13 with filter/filterAcc separated out
+20 adding inversions (with caveats)
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (XXX: Why?)
@@ -184,20 +191,12 @@ with streamScan as streamFilterAcc (XXX: Why?)
 If ordering of stream items is not important, many more rewrites are
 potentially applicable (XXX prove):
 
-    19. streamMerge [streamMap f x1, streamMap f x2] =
-        streamMap f . streamMerge [x1, x2]
-        need to check handling of empty lists
-
-    20. streamMerge [streamExpand s1, streamExpand s2]
+    21. streamMerge [streamExpand s1, streamExpand s2]
         = streamExpand (streamMerge [s1,s2])
         ordering not preserved
 
-    21. streamFilter f $ streammerge [s1, s2]
+    22. streamFilter f $ streammerge [s1, s2]
         = streamMerge [streamFilter f s1, streamFilter f s2]
-        ordering not preserved
-
-    22. streamMap f $ streamMerge [s1, s2]
-        = streamMerge [streamMap f s1, streamMap f s2]
         ordering not preserved
 
     23. streamExpand (streamMerge [w1,w2])
