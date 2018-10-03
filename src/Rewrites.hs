@@ -3,6 +3,7 @@
 module Rewrites (htf_thisModulesTests) where
 
 import Data.List (sort)
+import Data.Char (isAscii)
 import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
@@ -432,13 +433,13 @@ pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 ------------------------------------------------------------------------------
 -- streamMerge → streamMap
 
-mergeMapPre s  = streamMap succ $ streamMerge [sA, s]
-mergeMapPost s = streamMerge [streamMap succ sA, streamMap succ s]
+-- using isAscii as our function
+mergeMapPre s  = streamMap isAscii $ streamMerge [sA, s]
+mergeMapPost s = streamMerge [streamMap isAscii sA, streamMap isAscii s]
 
--- XXX ordering not preserved?
--- *very* expensive to evaluate
+-- expensive to evaluate
 -- passes
-pxxp_mergeMap s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
+pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 
 ------------------------------------------------------------------------------
 -- streamMerge → streamScan
