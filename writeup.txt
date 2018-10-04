@@ -160,30 +160,38 @@ Results
         = streamMerge [streamMap f s1, streamMap f s2]
         total, invertible
 
+    14. streamMerge [s1, streamMerge [s2, s3]]
+        = streamMerge [s1, s2, s3]
+        ordering preserved in the right-associative case
+        invertible
+
 Many of the above rules are invertible, producing the following
 additional rules:
 
-    14. filter (\x -> f x && g x) = filter f . filter g
+    15. filter (\x -> f x && g x) = filter f . filter g
 
-    15. streamMap f . streamFilter (p . f) = streamFilter p . streamMap f
+    16. streamMap f . streamFilter (p . f) = streamFilter p . streamMap f
         inversion caveat: we would not normally expect to receive (p . f)
         in a decomposable form.
 
-    16. streamMap (f . g) = streamMap f . streamMap g
+    17. streamMap (f . g) = streamMap f . streamMap g
 
-    17. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
+    18. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
 
-    18. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
+    19. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    19. streamExpand . streamMap (map f) = streamMap f . streamExpand
+    20. streamExpand . streamMap (map f) = streamMap f . streamExpand
 
-    20. streamMerge [streamMap f s1, streamMap f s2]
+    21. streamMerge [streamMap f s1, streamMap f s2]
         = streamMap f $ streamMerge [s1, s2]
 
-11 rules
-13 with filter/filterAcc separated out
-20 adding inversions (with caveats)
+    22. streamMerge [s1, s2, s3]
+        = streamMerge [s1, streamMerge [s2, s3]]
+
+12 rules
+14 with filter/filterAcc separated out
+22 adding inversions (with caveats)
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (XXX: Why?)
@@ -191,21 +199,18 @@ with streamScan as streamFilterAcc (XXX: Why?)
 If ordering of stream items is not important, many more rewrites are
 potentially applicable (XXX prove):
 
-    21. streamMerge [streamExpand s1, streamExpand s2]
+    23. streamMerge [streamExpand s1, streamExpand s2]
         = streamExpand (streamMerge [s1,s2])
         ordering not preserved
 
-    22. streamFilter f $ streammerge [s1, s2]
+    24. streamFilter f $ streammerge [s1, s2]
         = streamMerge [streamFilter f s1, streamFilter f s2]
         ordering not preserved
 
-    23. streamExpand (streamMerge [w1,w2])
+    25. streamExpand (streamMerge [w1,w2])
         = streamMerge [streamExpand w1, streamExpand w2]
         ordering not preserved
 
-    24. streamMerge [s1, streamMerge [s2, s3]]
-        = streamMerge [s1, s2, s3]
-        ordering not preserved
 
 There are some issues to consider about constant or variable size of
 lists in the case where the stream data type is a list, such as after

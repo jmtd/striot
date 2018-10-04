@@ -21,6 +21,7 @@ jClean = map (\(Event _ _ (Just v)) -> v)
 
 sA = [Event 0 Nothing (Just i)|i<-['a'..]]
 sB = [Event 0 Nothing (Just i)|i<-['0'..]]
+sC = [Event 0 Nothing (Just i)|i<-['A'..]]
 sW = streamWindow (chop 2) sB
 
 instance Arbitrary a => Arbitrary (Event a) where
@@ -465,9 +466,24 @@ pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
 mergeMergePost c = streamMerge [sA, sB, c]
 
+-- ordering:
+--  streamMerge [sA,sB,sC] = a0bAc1dBe2fCg3hDi4jE…
+--                         = 12131213121312131213
+--                           (odd pattern!)
+-- streamMerge [sA, streamMerge [sB, sC]]
+--                         = a0bAc1dBe2fCg3hDi4jE…
+--                           12131213121312131213
+--                           same!
+--
+-- so streammerge is right-associative?
+
+-- streamMerge [streamMerge [sA, sB], sC]
+--                         = aA0BbC1DcE2FdG3HeI4J
+--                           13231323132313231323
+-- (different)
+
 -- passes but very expensive
-pxxp_mergeMerge s = sort (mergeMergePre s)
-                 == sort (mergeMergePost s)
+pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 
 ------------------------------------------------------------------------------
 -- streamMerge → streamJoin
