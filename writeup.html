@@ -728,25 +728,25 @@ inversion caveat: we would not normally expect to receive (p . f)
 in a decomposable form.</p>
 </li>
 <li>
-<p>streamMap (f . g) = streamMap f . streamMap g</p>
+<p><code>streamMap (f . g) = streamMap f . streamMap g</code></p>
 </li>
 <li>
-<p>streamMap (\(x,y) &#8594; (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f</p>
+<p><code>streamMap (\(x,y) &#8594; (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f</code></p>
 </li>
 <li>
-<p>streamExpand . streamMap (filter f) = streamFilter f . streamExpand
+<p><code>streamExpand . streamMap (filter f) = streamFilter f .  streamExpand</code>
 (XXX it would be good to write QuickCheck properties for the inversions)</p>
 </li>
 <li>
-<p>streamExpand . streamMap (map f) = streamMap f . streamExpand</p>
+<p><code>streamExpand . streamMap (map f) = streamMap f . streamExpand</code></p>
 </li>
 <li>
-<p>streamMerge [streamMap f s1, streamMap f s2]
-= streamMap f $ streamMerge [s1, s2]</p>
+<p><code>streamMerge [streamMap f s1, streamMap f s2]
+= streamMap f $ streamMerge [s1, s2]</code></p>
 </li>
 <li>
-<p>streamMerge [s1, s2, s3]
-= streamMerge [s1, streamMerge [s2, s3]]</p>
+<p><code>streamMerge [s1, s2, s3]
+= streamMerge [s1, streamMerge [s2, s3]]</code></p>
 </li>
 </ol>
 </div>
@@ -766,18 +766,18 @@ rules are available:</p>
 <div class="olist arabic">
 <ol class="arabic" start="23">
 <li>
-<p>streamMerge [streamExpand s1, streamExpand s2]
-= streamExpand (streamMerge [s1,s2])
+<p><code>streamMerge [streamExpand s1, streamExpand s2]
+= streamExpand (streamMerge [s1,s2])</code>
 ordering not preserved</p>
 </li>
 <li>
-<p>streamFilter f $ streammerge [s1, s2]
-= streamMerge [streamFilter f s1, streamFilter f s2]
+<p><code>streamFilter f $ streammerge [s1, s2]
+= streamMerge [streamFilter f s1, streamFilter f s2]</code>
 ordering not preserved</p>
 </li>
 <li>
-<p>streamExpand (streamMerge [w1,w2])
-= streamMerge [streamExpand w1, streamExpand w2]
+<p><code>streamExpand (streamMerge [w1,w2])
+= streamMerge [streamExpand w1, streamExpand w2]</code>
 ordering not preserved</p>
 </li>
 </ol>
@@ -861,7 +861,7 @@ rewrite purposes</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2018-10-05 13:56:59 BST
+Last updated 2018-10-12 11:19:17 BST
 </div>
 </div>
 </body>

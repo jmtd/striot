@@ -191,20 +191,20 @@ additional rules:
         inversion caveat: we would not normally expect to receive (p . f)
         in a decomposable form.
 
-    17. streamMap (f . g) = streamMap f . streamMap g
+    17. `streamMap (f . g) = streamMap f . streamMap g`
 
-    18. streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f
+    18. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
 
-    19. streamExpand . streamMap (filter f) = streamFilter f . streamExpand
+    19. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    20. streamExpand . streamMap (map f) = streamMap f . streamExpand
+    20. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
 
-    21. streamMerge [streamMap f s1, streamMap f s2]
-        = streamMap f $ streamMerge [s1, s2]
+    21. `streamMerge [streamMap f s1, streamMap f s2]
+        = streamMap f $ streamMerge [s1, s2]`
 
-    22. streamMerge [s1, s2, s3]
-        = streamMerge [s1, streamMerge [s2, s3]]
+    22. `streamMerge [s1, s2, s3]
+        = streamMerge [s1, streamMerge [s2, s3]]`
 
 12 rules
 14 with filter/filterAcc separated out
@@ -217,16 +217,16 @@ If ordering of stream items is not important, some additional rewrite
 rules are available:
 
 [start=23]
-    23. streamMerge [streamExpand s1, streamExpand s2]
-        = streamExpand (streamMerge [s1,s2])
+    23. `streamMerge [streamExpand s1, streamExpand s2]
+        = streamExpand (streamMerge [s1,s2])`
         ordering not preserved
 
-    24. streamFilter f $ streammerge [s1, s2]
-        = streamMerge [streamFilter f s1, streamFilter f s2]
+    24. `streamFilter f $ streammerge [s1, s2]
+        = streamMerge [streamFilter f s1, streamFilter f s2]`
         ordering not preserved
 
-    25. streamExpand (streamMerge [w1,w2])
-        = streamMerge [streamExpand w1, streamExpand w2]
+    25. `streamExpand (streamMerge [w1,w2])
+        = streamMerge [streamExpand w1, streamExpand w2]`
         ordering not preserved
 
 
