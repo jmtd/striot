@@ -88,11 +88,21 @@ filterMapPost = (streamFilter (p . ff) . streamMap ff) sB
 -------------------------------------------------------------------------------
 -- streamFilter → streamScan
 
+-- XXX
+
 -------------------------------------------------------------------------------
 -- streamFilter → streamWindow
--- streamFilter → streamExpand
 
 -- Nothing
+-- Rationale: the filter is operating on some atomic a, we don't know the window
+-- logic so we don't know if it can properly handle the rejected events, and what
+-- 'shape' the windows should be if we tried to map the filter into them afterwards
+
+-- streamFilter → streamExpand
+-- Nothing
+-- Rationale: filter must be operating on a list type [a], and rejecting or accepting
+-- a full list of things. if we expand those things into a single stream, we lose the
+-- grouping information and so can't derive a filter that operated identically
 
 ------------------------------------------------------------------------------
 -- streamFilter → streamMerge
@@ -104,6 +114,7 @@ filterMergePost s = streamFilter f $ streamMerge [sA, s]
 -- post merge (sort on a timestamp?)
 
 -- reordering is externally dependent on the streamFilter predicate
+-- XXX 
 
 txxt_filterMerge = assertBool $ sort (take 10 (filterMergePre sB))
                              == sort (take 10 (filterMergePost sB))
@@ -164,6 +175,7 @@ prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 -- streamFilterAcc → streamMap
 
 -- Nothing -- see discussion in streamFilter → streamMap
+-- XXX revisit
 
 -------------------------------------------------------------------------------
 -- streamFilterAcc → streamScan
