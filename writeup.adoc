@@ -229,6 +229,7 @@ rules are available:
         = streamMerge [streamExpand w1, streamExpand w2]`
         ordering not preserved
 
+XXX + streamFilter -> streamMerge (reverse of 24)
 
 There are some issues to consider about constant or variable size of
 lists in the case where the stream data type is a list, such as after
