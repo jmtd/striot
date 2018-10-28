@@ -54,7 +54,7 @@ promote pred = streamFilterAcc (\a _ -> a) '0' (\v _ -> pred v)
 
 prop_promotedFilter s = streamFilter g s == promote g s
 
-filterFilterAccPost    = mkfAccFuse (\_ v -> v) '0' (\v _ -> g v) accfn1 acc1 pred1
+filterFilterAccPost    = mkfAccFuse (\x v -> x) '0' (\v _ -> g v) accfn1 acc1 pred1
 prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 
 -- this is to demonstrate that the type of the dummy accumulator for the promoted
