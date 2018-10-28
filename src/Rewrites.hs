@@ -47,31 +47,21 @@ prop_filterFilter s = filterFilterPre s == filterFilterPost s
 
 filterFilterAccPre = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
 
--- first promote the streamFilter into a streamFilterAcc
-promoted = streamFilterAcc
-    (\_ v -> v)
-    '0' -- XXX: fixes the types here
-    (\v _  -> g v)
+-- promote a streamFilter into a streamFilterAcc
+-- the accumulator type is Char but this shouldn't matter
+promote :: (a -> Bool) -> Stream a -> Stream a
+promote pred = streamFilterAcc (\a _ -> a) '0' (\v _ -> pred v)
 
-prop_promotedFilter s = streamFilter g s == promoted s
+prop_promotedFilter s = streamFilter g s == promote g s
 
-filterFilterAccPost = mkfAccFuse (\_ v -> v) '0' (\v _ -> g v) accfn1 acc1 pred1
-
+filterFilterAccPost    = mkfAccFuse (\_ v -> v) '0' (\v _ -> g v) accfn1 acc1 pred1
 prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 
 -- this is to demonstrate that the type of the dummy accumulator for the promoted
 -- streamFilter is unimportant and does not need to match the type of the other
 -- accumulator
--- this fails! pred1 forces c and a to be the same type (Char)
-
--- g ::  Char -> Bool
-
---filterFilterAccPost2 = mkfAccFuse (\_ v -> v) (0::Int) (\v _ -> g v) accfn1 acc1 pred1
---                                 b  a    b    b        a b    Bool c-a-c   c   a-c-Bool
---                                                                  c == a due to >=
-
-
---prop_filterFilterAcc2 s = filterFilterAccPre s == filterFilterAccPost2 s
+filterFilterAccPost2    = mkfAccFuse (\x v -> x) (0::Int) (\v _ -> g v) accfn1 acc1 pred1
+prop_filterFilterAcc2 s = filterFilterAccPre s == filterFilterAccPost2 s
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamMap
