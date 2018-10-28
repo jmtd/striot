@@ -219,17 +219,17 @@ rules are available:
 [start=23]
     23. `streamMerge [streamExpand s1, streamExpand s2]
         = streamExpand (streamMerge [s1,s2])`
-        ordering not preserved
 
-    24. `streamFilter f $ streammerge [s1, s2]
-        = streamMerge [streamFilter f s1, streamFilter f s2]`
-        ordering not preserved
-
-    25. `streamExpand (streamMerge [w1,w2])
+    24. `streamExpand (streamMerge [w1,w2])
         = streamMerge [streamExpand w1, streamExpand w2]`
-        ordering not preserved
 
-XXX + streamFilter -> streamMerge (reverse of 24)
+and their inverses
+
+    25. `streamFilter f $ streammerge [s1, s2]
+        = streamMerge [streamFilter f s1, streamFilter f s2]`
+
+    26. `streamMerge [streamFilter f s1, streamFilter f s2]
+        = streamFilter f $ streammerge [s1, s2]`
 
 There are some issues to consider about constant or variable size of
 lists in the case where the stream data type is a list, such as after
