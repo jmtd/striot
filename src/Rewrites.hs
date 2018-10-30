@@ -313,8 +313,8 @@ prop_windowExpand1  :: Stream Char -> Bool
 prop_windowExpand1 s = (windowExpandPre 2) s == s
 
 -- works but expensive to evaluate
--- prop_windowExpand2 :: Int -> Stream Char -> Bool
--- prop_windowExpand2 n s = (windowExpandPre n) s == s
+pxxp_windowExpand2 :: Int -> Stream Char -> Bool
+pxxp_windowExpand2 n s = (windowExpandPre n) s == s
 
 -------------------------------------------------------------------------------
 -- streamWindow → streamMerge
