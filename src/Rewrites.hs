@@ -235,6 +235,7 @@ prop_mapWindow s = mapWindowPre s == mapWindowPost s
 mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
 mapMergePost s = streamMap next $ streamMerge [sA,s]
 
+-- slow; passes
 prop_mapMerge s = mapMergePre s == mapMergePost s
 
 ------------------------------------------------------------------------------
