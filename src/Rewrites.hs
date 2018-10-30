@@ -33,6 +33,12 @@ instance Arbitrary a => Arbitrary (Event a) where
 f = (>= 'a')
 g = (<= 'z')
 
+-- avoids a situation where pred/succ will fail on the smallest/largest Enum type
+next :: (Eq a, Bounded a, Enum a) => a -> a
+next a = if a == maxBound then minBound else succ a
+prev :: (Eq a, Bounded a, Enum a) => a -> a
+prev a = if a == minBound then maxBound else pred a
+
 -------------------------------------------------------------------------------
 -- streamFilter → streamFilter
 -- 1
@@ -143,7 +149,6 @@ pred1 = (>=)
 -- argument order assumes data flow left-to-right, i.e. the opposite way to
 -- function composition
 -- XXX test that b and c can be distinct types
--- XXX currently failing! see filterFilterAccPost2
 mkfAccFuse :: (b -> a -> b) -> b -> (a -> b -> Bool)
            -> (c -> a -> c) -> c -> (a -> c -> Bool)
            -> Stream a -> Stream a
@@ -227,12 +232,10 @@ prop_mapWindow s = mapWindowPre s == mapWindowPost s
 --   streamMerge (streamMap f x1) (streamMap f x2)
 -- = streamMap f . streamMerge x1 x2
 
-mapMergePre  s = streamMerge [(streamMap succ sA),(streamMap succ s)]
-mapMergePost s = streamMap succ $ streamMerge [sA,s]
+mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
+mapMergePost s = streamMap next $ streamMerge [sA,s]
 
-test_mapMerge = assertBool $ take 50 (mapMergePre sB) == take 50 (mapMergePost sB)
--- this catches a failure! (empty list?) XXX
-prop_mapMerge s = mapMapPre s == mapMergePost s
+prop_mapMerge s = mapMergePre s == mapMergePost s
 
 ------------------------------------------------------------------------------
 -- streamMap → streamJoin
