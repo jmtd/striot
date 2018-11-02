@@ -6,10 +6,12 @@ import Data.Aeson
 import Data.List
 import Data.List.Split
 import qualified Data.Map as Map
-import Data.Time (UTCTime)
+import Data.Maybe (fromJust)
+import Data.Time (UTCTime(..),fromGregorianValid)
 import GHC.Generics (Generic)
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
+import System.IO
 
 -- A solution to: http://www.debs2015.org/call-grand-challenge.html
 -- The winner was: https://vgulisano.files.wordpress.com/2015/06/debs2015gc_tr.pdf
@@ -376,3 +378,24 @@ q2TripSourceTest10 :: IO ()
 q2TripSourceTest10 = do
     contents <- readFile "sorteddata.csv"
     putStr $ show $ length $ tripSource contents
+
+testTrip = Trip  { medallion = "07290D3599E7A0D62097A346EFCC1FB5"
+                 , hackLicense = "E7750A37CAB07D0DFF0AF7E3573AC141"
+                 , pickupDatetime = UTCTime (fromJust $ fromGregorianValid 2013 01 01) 0
+                 , dropoffDatetime = UTCTime (fromJust $ fromGregorianValid 2013 01 01) 2
+                 , tripTimeInSecs = 120
+                 , tripDistance = 0.44
+                 , pickup = Location {lat = 40.716976 , long = -73.95653}
+                 , dropoff = Location {lat = 40.715008 , long = -73.96244}
+                 , paymentType = Cash
+                 , fareAmount = 3.5
+                 , surcharge = 0.5
+                 , mtaTax = 0.5
+                 , tipAmount = 0.0
+                 , tollsAmount = 0.0
+                 , totalAmount = 4.5
+                 }
+
+testTripEvent = Event { eventId = 0
+                      , time  = Just $ UTCTime (fromJust $ fromGregorianValid 2013 01 01) 2
+                      , value = Just testTrip }
