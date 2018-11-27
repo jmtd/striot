@@ -38,10 +38,10 @@ instance Show StreamOperator where
     show Sink            = "streamSink"
 
 -- Id needed for uniquely identifying a vertex. (Is there a nicer way?)
-data StreamVertex = StreamVertex
+data AbstractStreamVertex a = StreamVertex
     { vertexId   :: Int
     , operator   :: StreamOperator
-    , parameters :: [String] -- XXX strings of code. From CompileIoT. Variable length e.g.FilterAcc takes 3 (?)
+    , parameters :: [a]
     , intype     :: String
     , outtype    :: String
     } deriving (Eq,Show)
@@ -260,11 +260,12 @@ test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]]
 ------------------------------------------------------------------------------
 -- quickcheck experiment
 
+{-
 instance Arbitrary StreamOperator where
     arbitrary = elements [ Map , Filter , Expand , Window , Merge , Join , Scan
                          , FilterAcc , Source , Sink ]
 
-instance Arbitrary StreamVertex where
+instance Arbitrary (AbstractStreamVertex a) where
     arbitrary = do
         vertexId <- arbitrary
         operator <- arbitrary
@@ -281,3 +282,4 @@ streamgraph' n | n>0 = do
     v <- arbitrary
     t <- streamgraph' (n-1)
     return $ connect (vertex v) t
+ -}
