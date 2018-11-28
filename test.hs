@@ -66,7 +66,5 @@ entryNodes (Vertex v) = []
 entryNodes' g = let
     vl = vertexList g
     el = edgeList g
-    sources = map fst el
     sinks = map snd el
-    in filter (\v -> v `elem` sources && not (v `elem` sinks)) vl
-    -- XXX first part of filter probably unnecessary
+    in filter (\v -> not (v `elem` sinks)) vl
