@@ -1,5 +1,7 @@
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
 import Striot.CompileIoT
 import Algebra.Graph
+import Test.Framework hiding ((===))
 
 -- attempt to encode a graph transformation!
 
@@ -60,9 +62,28 @@ mapFilter :: StreamGraph -> StreamGraph
 mapFilter (Connect mapv@(Vertex (StreamVertex i Map (f:fs) intype))
                    (Vertex (StreamVertex j Filter (p:ps) _)))
     = sv j Filter (("("++p++").("++f++")"):ps) intype `Connect` mapv
+mapFilter g = g
 
-mapFilterEx = (Connect (Vertex (StreamVertex 0 Map ["show"] "Int"))
-                       (Vertex (StreamVertex 1 Filter ["\\x -> length x <3"] "String")))
+mapFilterEx = (sv 0 Map ["f"] "Int") `Connect` (sv 1 Filter ["p"] "String")
+mapFilterEx2 = (sv 0 Map ["show"] "Int") `Connect`
+                       (sv 1 Filter ["\\x -> length x <3"] "String")
+
+-- adjusted structure to see if we can thwart pattern matching
+mapFilterEx3 = empty `overlay` mapFilterEx2
+test_ex3_thwart          = assertEqual mapFilterEx3 (mapFilter mapFilterEx3)
+-- "simplify" fixes this
+test_simplify_ex3        = assertNotEqual mapFilterEx3 (mapFilter (simplify mapFilterEx3))
+
+-- the above would not be thwarted if the function was applied to all subgraphs,
+-- but would be by this version…
+mapFilterEx4 = (sv 0 Map ["show"] "Int") `Connect`
+                       (empty `Overlay` sv 1 Filter ["\\x -> length x <3"] "String")
+
+test_ex2_4_equiv         = assertEqual mapFilterEx2 mapFilterEx4
+test_mapfilter_fails_ex4 = assertEqual mapFilterEx4 (mapFilter mapFilterEx4)
+-- simplify fixes this, too
+test_simplify_ex2_ex4    = assertBool $ mapFilterEx2 === simplify mapFilterEx4
+test_mapfilter_ex4       = assertNotEqual mapFilterEx4 (mapFilter (simplify mapFilterEx4))
 
 
-mapFilterEx3 = (sv 0 Map ["f"] "Int") `Connect` (sv 1 Filter ["p"] "String")
+main = htfMain htf_Main_thisModulesTests
