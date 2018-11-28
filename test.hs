@@ -46,25 +46,12 @@ exampleStream = path
     , StreamVertex 4 Sink   ["mapM_ $ putStrLn . (\"receiving \"++) . show . value"] "[String]"
     ]
 
---doesRuleMatch :: Graph StreamVertex -> Graph StreamVertex -> Bool
---doesRuleMatch g lhs = let
---    -- find the entrance node (nodes?) into the lhs
-
-entryNodes :: Graph a -> [a]
-entryNodes Empty = []
-entryNodes (Overlay f g) = (entryNodes f) ++ (entryNodes g)
-entryNodes (Connect (Vertex v) g) = [v]
-entryNodes (Connect f g) = entryNodes f -- all nodes in g have incoming edges so can't be entry nodes.
-entryNodes (Vertex v) = []
-
--- this doesn't work at all, yet. it identifies candidate nodes, but they might have inbound
--- edges from other parts of the expression (e.g. exampleStream above has each filter represented
--- twice:
---      streamSource * streamFilter + streamFilter * streamFilter + streamFilter * streamSink
---)
-
-entryNodes' g = let
+entryNodes g = let
     vl = vertexList g
     el = edgeList g
     sinks = map snd el
     in filter (\v -> not (v `elem` sinks)) vl
+
+--doesRuleMatch :: Graph StreamVertex -> Graph StreamVertex -> Bool
+--doesRuleMatch g lhs = let
+--    -- find the entrance node (nodes?) into the lhs
