@@ -55,3 +55,6 @@ entryNodes g = let
 --doesRuleMatch :: Graph StreamVertex -> Graph StreamVertex -> Bool
 --doesRuleMatch g lhs = let
 --    -- find the entrance node (nodes?) into the lhs
+
+pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
+    where wrap x y z = y ++ x ++ z
