@@ -13,7 +13,16 @@ lhs = path
     , StreamVertex 1 Filter ["g","s"] "a"
     ]
 -- XXX type different to lhs
-rhs = StreamVertex 0 Filter ["(\\x -> f x && g x)", "s"] "a"
+rhs = StreamVertex 0 Filter ["\\x -> f x && g x", "s"] "a"
+-- Or, RHS as a function?
+
+rhs2 :: StreamGraph -> StreamGraph
+rhs2 (Connect (Vertex (StreamVertex i Filter (f1:_) intype))
+              (Vertex (StreamVertex _ Filter (f2:_) _))) =
+    Vertex $ StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype
+    -- XXX perhaps, we could use pattern matching to both chekc *and* apply rewrites,
+    -- with a catch-all pattern for "no match, no op"
+rhs2 g = g
 
 {- 
 
