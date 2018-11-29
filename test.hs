@@ -87,3 +87,31 @@ test_mapfilter_ex4       = assertNotEqual mapFilterEx4 (mapFilter (simplify mapF
 
 
 main = htfMain htf_Main_thisModulesTests
+
+------------------------------------------------------------------------------
+
+apply :: (StreamGraph -> StreamGraph) -> StreamGraph -> StreamGraph
+apply f Empty = Empty
+apply f (Vertex v) = Vertex v
+apply f g@(Overlay x y) = if   g == f g
+                          then Overlay (f x) (f y)
+                          else g
+apply f g@(Connect x y) = f g
+
+test_apply_works = assertEqual (mapFilter mapFilterEx)
+    (apply mapFilter mapFilterEx)
+
+-- a 3-node example. mapFilter should apply to this; rhs should apply to the
+-- output
+mapFilterEx5 = path
+    [ StreamVertex 0 Filter ["p1"] "Int"
+    , StreamVertex 1 Map ["f"] "Int"
+    , StreamVertex 2 Filter ["p2"] "String"
+    ]
+
+test_apply_deeper = assertNotEqual mapFilterEx5 (apply mapFilter mapFilterEx5)
+-- XXX: the output of this is wrong:
+-- "streamFilter (p1) * streamMap (f) + streamFilter ((p2).(f)) * streamMap (f)"
+-- the overlay portion needs to be rewritten too
+-- perhaps use something like replaceVertex? except we'll need to do that at the
+-- top level. so we need a boolean "does this pattern apply"…
