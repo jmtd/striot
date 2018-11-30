@@ -117,4 +117,39 @@ test_apply_deeper = assertNotEqual mapFilterEx5 (apply mapFilter mapFilterEx5)
 -- top level. so we need a boolean "does this pattern apply"…
 
 ------------------------------------------------------------------------------
--- 
+-- alter rhs so it returns a list of nodes to replace, rather than a graph
+-- we'll collect these in the upstream function and then attempt to apply them
+-- list of tuples (replace,with)
+-- we also need to handle merging vertexes (argg)
+data ReWriteOp = ReplaceNode StreamVertex StreamVertex
+               | MergeNode   StreamVertex StreamVertex
+               | DeleteNode  StreamVertex
+               deriving (Show,Eq)
+
+-- streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)
+rhs2 :: StreamGraph -> [ReWriteOp]
+rhs2 (Connect (Vertex a@(StreamVertex i Filter (f1:_) intype))
+             (Vertex b@(StreamVertex _ Filter (f2:_) _))) =
+
+    let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype
+    in  [ ReplaceNode b c
+        , MergeNode a c
+        ]
+rhs2 g = []
+
+-- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
+mapFilter2 :: StreamGraph -> [ReWriteOp]
+mapFilter2 (Connect (Vertex m@(StreamVertex i Map (f:fs) intype))
+                   (Vertex f1@(StreamVertex j Filter (p:ps) _))) =
+    let f2 = StreamVertex j Filter (("("++p++").("++f++")"):ps) intype
+    in  [ ReplaceNode m f2
+        , ReplaceNode f1 m
+        ]
+mapFilter2 g = []
+
+doIt :: StreamGraph -> [ReWriteOp] -> StreamGraph
+doIt g [] = g
+doIt g ((ReplaceNode old new):rs) = doIt (replaceVertex old new g) rs
+doIt g ((MergeNode l r):rs) = doIt (mergeVertices (\v->v`elem`[l,r]) r g) rs
+doIt g ((DeleteNode v):rs) = doIt (removeVertex v g) rs
+
