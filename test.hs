@@ -23,7 +23,7 @@ rhs (Connect (Vertex (StreamVertex i Filter (f1:_) intype))
     Vertex $ StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype
 -- perhaps, we could use pattern matching to both check *and* apply rewrites,
 -- with a catch-all pattern for "no match, no op"
-rhs2 g = g
+rhs g = g
 
 exampleStream = path
     [ StreamVertex 1 Source ["return 6"]                         "String"
@@ -115,3 +115,6 @@ test_apply_deeper = assertNotEqual mapFilterEx5 (apply mapFilter mapFilterEx5)
 -- the overlay portion needs to be rewritten too
 -- perhaps use something like replaceVertex? except we'll need to do that at the
 -- top level. so we need a boolean "does this pattern apply"…
+
+------------------------------------------------------------------------------
+-- 
