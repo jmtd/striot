@@ -153,3 +153,15 @@ doIt g ((ReplaceNode old new):rs) = doIt (replaceVertex old new g) rs
 doIt g ((MergeNode l r):rs) = doIt (mergeVertices (\v->v`elem`[l,r]) r g) rs
 doIt g ((DeleteNode v):rs) = doIt (removeVertex v g) rs
 
+-- test something? about doIt mapFilterEx (mapFilter2 mapFilterEx)
+
+m1 = Vertex $ StreamVertex 0 Map ["show"] "Int"
+f1 = Vertex $ StreamVertex 1 Filter ["\\x -> length x <3"] "String"
+
+m2 = Vertex $ StreamVertex 0 Map ["show"] "Int"
+f2 = Vertex $ StreamVertex 1 Filter ["(\\x -> length x <3).(show)"] "Int"
+
+mapFilterEx6 = m1 `Connect` f1
+correct = f2 `Connect` m2
+
+test_foo = assertEqual correct (doIt mapFilterEx6 (mapFilter2 mapFilterEx6))
