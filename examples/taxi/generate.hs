@@ -6,6 +6,8 @@ import Striot.CompileIoT
 import Algebra.Graph
 import System.FilePath --(</>)
 
+import VizGraph
+
 imports = ["Striot.FunctionalIoTtypes", "Striot.FunctionalProcessing", "Striot.Nodes", "Taxi"
     , "Data.Time" -- UTCTime(..)..
     , "Data.Maybe" -- fromJust
