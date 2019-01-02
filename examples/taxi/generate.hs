@@ -49,3 +49,37 @@ writePart (x,y) = let
         writeFile fn y
 
 main = mapM_ writePart (zip ['1'..] partEx)
+
+------------------------------------------------------------------------------
+
+v0 = StreamVertex 0 Source [source]     "Trip"
+-- processedStream
+v1 = StreamVertex 1 Map ["s"]       "Trip"
+v2 = StreamVertex 2 Filter ["s"]    "Trip"
+
+-- due to representation limitations, we need to duplicate this entire initial
+-- bit at the moment
+v0b = StreamVertex 100 Source [source]  "Trip"
+v1b = StreamVertex 101 Map ["…"] "Trip"
+v2b = StreamVertex 102 Filter ["…"] "Trip"
+
+-- streamJoinW
+v3a = StreamVertex 3 Window ["…"] "?"
+v3b = StreamVertex 33 Window ["…"] "?"
+v4 = StreamVertex 4 Join ["…"] "?"
+v5 = StreamVertex 5 Map ["…"] "?"
+
+-- streamWindowAggregate
+v6 = StreamVertex 6 Window ["…"] "?"
+v7 = StreamVertex 7 Map ["…"] "?"
+
+v8 = StreamVertex 8 FilterAcc ["…"] "?"
+v9 = StreamVertex 9 Sink ["…"] "?"
+
+-- XXX this will not correctly construct the second set of edges...
+-- but do we even need that? just refer to 's' twice in the params to Join!
+-- ... streamJoinW applies distinct windows to each stream prior to joining alas
+taxiQ2 = path [v0,v1,v2,v3a]                     -- source branch 1
+    `Overlay` path [v0b,v1b,v2b,v3b]             -- source branch 2
+    `Overlay` ((Vertex v3a `Overlay` Vertex v3b) `Connect` Vertex v4) -- streamJoin
+    `Overlay` path [v4,v5,v6,v7,v8,v9]           -- trunk to sink
