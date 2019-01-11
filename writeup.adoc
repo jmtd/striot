@@ -140,6 +140,7 @@ supplied arguments, such as the predicate supplied to streamFilter.
         filterAcc . filterAcc = ...
         (partial: type unification issue; fusion)
 
+[start=5]
      5. `streamFilter p . streamMap f = streamMap f . streamFilter (p . f)`
         total.
         efficiency of RHS:
