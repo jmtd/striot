@@ -226,6 +226,7 @@ rules are available:
 
 and their inverses
 
+[start=25]
     25. `streamFilter f $ streammerge [s1, s2]
         = streamMerge [streamFilter f s1, streamFilter f s2]`
 
