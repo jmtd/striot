@@ -33,7 +33,18 @@ selection of operators
     streamExpand    :: Stream [a] -> Stream a
                     ::
     streamMerge     :: Stream [a] -> Stream a
+
+        XXX is this right? or is it [Stream a]
+
     streamJoin      :: Stream a -> Stream b -> Stream (a,b)
+
+Ignoring the stream-in, stream-out parameters, the first four operators are
+unary and their functional parameter operates on the payload of the stream,
+and not the stream itself (the types of the HoFs do not include Stream)
+
+The next four operators manipulate the structure of the stream itself.
+StreamWindow eliminates the Event wrappers around the iotas that flow into
+it and synthesises new ones for the collected iotes it outputs.
 
 == Method
 
@@ -162,6 +173,9 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
      9. `streamExpand . streamWindow _ = id`
         elimination; total
+        XXX: this is not possible
+        it's true that from the perspective of the stream payload this is equivalent to id
+        but the metadata in the events coming into the window are lost (e.g. timestamps)
 
     10. `streamFilter f . streamExpand = streamExpand . streamMap (filter f)`
         total. invertible with decomposition caveat (17)
