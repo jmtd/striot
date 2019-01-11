@@ -78,3 +78,8 @@ foo8 = calculate mylaws taxiQ2
 -- test filterAcc fusion
 foo9 = calculate mylaws (parse expr "streamFilterAcc a b p1 . streamFilterAcc c d p2")
 fooA = calculate mylaws (parse expr "streamFilterAcc a b p1 . streamFilter p2")
+
+-- next step: generate every permutation of laws, then use each with calculate,
+-- then pull out the ultimate exprs, then reduce to unique versions, how many do
+-- we have?
+-- (\(Calc e ss) -> snd $ ss !! 3) foo7 :: Expr (implements Eq)
