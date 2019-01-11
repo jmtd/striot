@@ -48,6 +48,9 @@ mylaws = map (parse law) [ {-1-} "defn filterfuse: streamFilter f . streamFilter
 \                        = streamFilterAcc (fusedAcc f1 f2 p1) (comma a1 a2) (fusedPred p1 p2)"
                          -- XXX do we also need to remove the tuples? yes, the parser is fucked
 
+                         , "defn FilterAccMap: streamFilterAcc f2 a p . streamMap f = streamMap f . streamFilterAcc f2 a (p . f)"
+
+
                          -- XXX this rule is only useful if it opens up other possibilies, i.e., we can fuse
                          -- two adjacent streamFilterAcc afterwards. I'd also like more assurance that it is
                          -- correct (this is an anon-lambda-free translation of the original version)
