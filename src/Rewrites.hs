@@ -200,6 +200,19 @@ prop_mapFilter s = mapFilterPre s == mapFilterPost s
 
 ------------------------------------------------------------------------------
 -- streamMap → streamFilterAcc
+-- streamFilterAcc accfn acc p . streamMap f = streamMap f . streamFilterAcc accfn acc (p . f)
+
+accfn acc _ = acc+1
+accpred dat acc = even acc
+
+mapFilterAccPre :: Stream Char -> Stream Char
+mapFilterAccPre = streamFilterAcc accfn 0 accpred . streamMap next
+
+mapFilterAccPost :: Stream Char -> Stream Char
+mapFilterAccPost = streamMap next
+    . streamFilterAcc accfn 0 (accpred . next)
+
+prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
 
 ------------------------------------------------------------------------------
 -- streamMap → streamMap

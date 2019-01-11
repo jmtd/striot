@@ -158,11 +158,11 @@ supplied arguments, such as the predicate supplied to streamFilter.
         If p is highly selective, then the overhead of evaluating f
         twice per selected event may be lower than the savings made by
         reducing the list de/reconstruction overhead of streamMap.
-        invertible with caveat (14)
+        invertible with caveat (17)
 
      6. `streamMap f . streamMap g = streamMap (f . g)`
         total; fusion
-        invertible with decomposition caveat (15)
+        invertible with decomposition caveat (15) -- XXX wrong number (check all)
 
      7. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
         total
@@ -196,29 +196,34 @@ supplied arguments, such as the predicate supplied to streamFilter.
         ordering preserved in the right-associative case
         invertible
 
+    15. `streamFilterAcc af a p . streamMap f
+        = streamMap f . streamFilterAcc af a (p . f)`
+        total
+        invertible w/ caveat as per #5
+
 Many of the above rules are invertible, producing the following
 additional rules:
 
-[start=15]
-    15. `filter (\x -> f x && g x) = filter f . filter g`
+[start=16]
+    16. `filter (\x -> f x && g x) = filter f . filter g`
 
-    16. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
+    17. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
         inversion caveat: we would not normally expect to receive (p . f)
         in a decomposable form.
 
-    17. `streamMap (f . g) = streamMap f . streamMap g`
+    18. `streamMap (f . g) = streamMap f . streamMap g`
 
-    18. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
+    19. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
 
-    19. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
+    20. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    20. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
+    21. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
 
-    21. `streamMerge [streamMap f s1, streamMap f s2]
+    22. `streamMerge [streamMap f s1, streamMap f s2]
         = streamMap f $ streamMerge [s1, s2]`
 
-    22. `streamMerge [s1, s2, s3]
+    23. `streamMerge [s1, s2, s3]
         = streamMerge [s1, streamMerge [s2, s3]]`
 
 12 rules
@@ -231,20 +236,20 @@ with streamScan as streamFilterAcc (XXX: Why?)
 If ordering of stream items is not important, some additional rewrite
 rules are available:
 
-[start=23]
-    23. `streamMerge [streamExpand s1, streamExpand s2]
+[start=24]
+    24. `streamMerge [streamExpand s1, streamExpand s2]
         = streamExpand (streamMerge [s1,s2])`
 
-    24. `streamExpand (streamMerge [w1,w2])
+    25. `streamExpand (streamMerge [w1,w2])
         = streamMerge [streamExpand w1, streamExpand w2]`
 
 and their inverses
 
-[start=25]
-    25. `streamFilter f $ streammerge [s1, s2]
+[start=26]
+    26. `streamFilter f $ streammerge [s1, s2]
         = streamMerge [streamFilter f s1, streamFilter f s2]`
 
-    26. `streamMerge [streamFilter f s1, streamFilter f s2]
+    27. `streamMerge [streamFilter f s1, streamFilter f s2]
         = streamFilter f $ streammerge [s1, s2]`
 
 There are some issues to consider about constant or variable size of
