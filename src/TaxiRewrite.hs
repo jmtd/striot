@@ -9,6 +9,7 @@ import Laws
 import Calculations
 
 import Control.Monad (liftM2)
+import Data.List (permutations,nub)
 
 
 -- hack to encapsulate (\f g x -> f x && g x)
@@ -83,3 +84,9 @@ fooA = calculate mylaws (parse expr "streamFilterAcc a b p1 . streamFilter p2")
 -- then pull out the ultimate exprs, then reduce to unique versions, how many do
 -- we have?
 -- (\(Calc e ss) -> snd $ ss !! 3) foo7 :: Expr (implements Eq)
+
+-- this is slow, but eventually we end up with [(\ (Calc e ss) -> (snd . last) ss) foo7]
+foosB = nub
+      $ map (\ (Calc e ss) -> (snd . last) ss)
+      $ map (\laws -> calculate laws taxiQ1)
+        (permutations mylaws)
