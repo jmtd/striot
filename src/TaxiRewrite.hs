@@ -57,7 +57,7 @@ mylaws = map (parse law) [ {-1-} "defn filterfuse: streamFilter f . streamFilter
                          , "defn promote:    streamFilter p = streamFilterAcc (flip const) p (p . const)"
                          ]
 
-taxiQ1 = parse expr $ concat [ "streamFilterAcc accfn acc p2" -- journeyChanges
+taxiQ1 = parse expr $ concat [ "streamFilterAcc a1 a p2" -- journeyChanges
                              , " . streamMap f"               -- topk
                              , " . streamWindow w"            -- slidingTime 1800 (part of: streamWindowAggregate)
                              , " . streamFilter p"            -- inRange && inRange
