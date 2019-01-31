@@ -43,8 +43,14 @@ any rights for adaptation or redistribution.
 >  (simple,nonsimple) = partition isSimple laws
 >  (defns,others)     = partition isDefn nonsimple
 
+is simplifying: is the result of applying the law a shorter string
+of compositions?
+
 > isSimple (Law _ (Compose as1,Compose as2))
 >   = length as1 > length as2
+
+if the lhs is a single constant, it's a definition
+
 > isDefn (Law _ (Compose [Con f es],_))
 >   = all isVar es
 > isDefn _ = False

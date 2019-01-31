@@ -86,6 +86,6 @@ fooA = calculate mylaws (parse expr "streamFilterAcc a b p1 . streamFilter p2")
 
 -- this is slow, but eventually we end up with [(\ (Calc e ss) -> (snd . last) ss) foo7]
 foosB = nub
-      $ map (\ (Calc e ss) -> (snd . last) ss)
       $ map (\laws -> calculate laws taxiQ1)
         (permutations mylaws)
+      -- $ map (\ (Calc e ss) -> (snd . last) ss)
