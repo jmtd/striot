@@ -3,6 +3,8 @@ Jonathan Dowland <jon.dowland@ncl.ac.uk>
 :toc: right
 :toclevels: 4
 
+XXX go through and update to reflect discovery that we cannot reason about
+the functions that can rewrite the Events (e.g. streamWindow)
 
 == Abstract
 
@@ -28,14 +30,9 @@ selection of operators
     streamMap       :: (a -> b) -> Stream a -> Stream b
     streamFilterAcc :: (b -> a -> b) -> b -> (a -> b -> Bool) -> Stream a -> Stream a
     streamScan      :: (b -> a -> b) -> b -> Stream a -> Stream b
-                    ::
     streamWindow    :: Stream a -> Stream [a]
     streamExpand    :: Stream [a] -> Stream a
-                    ::
-    streamMerge     :: Stream [a] -> Stream a
-
-        XXX is this right? or is it [Stream a]
-
+    streamMerge     :: [Stream a] -> Stream a
     streamJoin      :: Stream a -> Stream b -> Stream (a,b)
 
 Ignoring the stream-in, stream-out parameters, the first four operators are
@@ -144,7 +141,7 @@ supplied arguments, such as the predicate supplied to streamFilter.
 == Results
 
      1. `filter f . filter g = filter (\x -> f x && g x)`
-        total; fusion; invertible with decomposition caveat (13)
+        total; fusion
 
      2. (and 3, 4) `filter f . filterAcc  / filterAcc  . filter f`
         promote filter f => filterAcc, then
@@ -158,18 +155,15 @@ supplied arguments, such as the predicate supplied to streamFilter.
         If p is highly selective, then the overhead of evaluating f
         twice per selected event may be lower than the savings made by
         reducing the list de/reconstruction overhead of streamMap.
-        invertible with caveat (17)
 
      6. `streamMap f . streamMap g = streamMap (f . g)`
         total; fusion
-        invertible with decomposition caveat (15) -- XXX wrong number (check all)
 
      7. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
         total
 
      8. `streamJoin s1 . streamMap f = streamMap (\(x,y) -> (x, f y)) .  streamJoin s1`
         total
-        invertible with decomposition caveat (16)
 
      9. `streamExpand . streamWindow _ = id`
         elimination; total
@@ -178,57 +172,54 @@ supplied arguments, such as the predicate supplied to streamFilter.
         but the metadata in the events coming into the window are lost (e.g. timestamps)
 
     10. `streamFilter f . streamExpand = streamExpand . streamMap (filter f)`
-        total. invertible with decomposition caveat (17)
+        total.
 
     11. `streamMap f . streamExpand = streamExpand . streamMap (map f)`
-        total. invertible with decomposition caveat (18)
+        total.
 
-    12. `streamWindow w . streamExpand = id`
-        elimination. XXX only tested w = chop n
-
-    13. `streamMap f $ streamMerge [s1, s2]
+    12. `streamMap f $ streamMerge [s1, s2]
         = streamMerge [streamMap f s1, streamMap f s2]`
-        total, invertible
+        total.
 
-    14. `streamMerge [s1, streamMerge [s2, s3]]
+    13. `streamMerge [s1, streamMerge [s2, s3]]
         = streamMerge [s1, s2, s3]`
         total
         ordering preserved in the right-associative case
-        invertible
 
-    15. `streamFilterAcc af a p . streamMap f
+    14. `streamFilterAcc af a p . streamMap f
         = streamMap f . streamFilterAcc af a (p . f)`
         total
-        invertible w/ caveat as per #5
 
 Many of the above rules are invertible, producing the following
-additional rules:
+additional rules. Invertion caveat applies: we would not normally
+expect to receive the LHS in a form that we can decompose: i.e.
+with the parameters broken out like `(f . g)` instead of `f`.
 
-[start=16]
-    16. `filter (\x -> f x && g x) = filter f . filter g`
+[start=15]
+    15. `filter (\x -> f x && g x) = filter f . filter g`
 
-    17. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
-        inversion caveat: we would not normally expect to receive (p . f)
-        in a decomposable form.
+    16. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
 
-    18. `streamMap (f . g) = streamMap f . streamMap g`
+    17. `streamMap (f . g) = streamMap f . streamMap g`
 
-    19. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
+    18. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
 
-    20. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
+    19. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    21. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
+    20. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
 
-    22. `streamMerge [streamMap f s1, streamMap f s2]
-        = streamMap f $ streamMerge [s1, s2]`
+    21. `streamMerge [streamMap f s1, streamMap f s2]
+        = streamMap f $ streamMerge [s0, s2]`
 
-    23. `streamMerge [s1, s2, s3]
+    22. `streamMerge [s1, s2, s3]
         = streamMerge [s1, streamMerge [s2, s3]]`
 
-12 rules
-14 with filter/filterAcc separated out
-22 adding inversions (with caveats)
+    23. `streamMap f . streamFilterAcc af a (p . f)
+        = streamFilterAcc af a p . streamMap f`
+
+14 rules
+23 adding inversions (with caveats)
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (XXX: Why?)
