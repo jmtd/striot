@@ -24,11 +24,6 @@ sB = [Event 0 Nothing (Just i)|i<-iterate next '0']
 sC = [Event 0 Nothing (Just i)|i<-iterate next 'A']
 sW = streamWindow (chop 2) sB
 
-instance Arbitrary a => Arbitrary (Event a) where
-    arbitrary = do
-        c <- arbitrary
-        return $ Event 0 Nothing (Just c)
-
 -- filter predicates
 f = (>= 'a')
 g = (<= 'z')
