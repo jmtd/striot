@@ -3,9 +3,6 @@ Jonathan Dowland <jon.dowland@ncl.ac.uk>
 :toc: right
 :toclevels: 4
 
-XXX go through all join rules and double check they are total given our new
-understanding of the event eliminatoin
-
 == Abstract
 
 We describe STRIoT: a stream-processing system built around pure
