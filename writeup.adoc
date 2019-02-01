@@ -264,17 +264,17 @@ The following partial rules do not preserve the order of stream events:
     24. `streamMerge [streamExpand s1, streamExpand s2]
         = streamExpand (streamMerge [s1,s2])`
 
-    25. `streamExpand (streamMerge [w1,w2])
-        = streamMerge [streamExpand w1, streamExpand w2]`
+    25. `streamMerge [streamFilter f s1, streamFilter f s2]
+        = streamFilter f $ streammerge [s1, s2]`
 
 and their inverses
 
 [start=26]
-    26. `streamFilter f $ streammerge [s1, s2]
-        = streamMerge [streamFilter f s1, streamFilter f s2]`
+    26. `streamExpand (streamMerge [s1,s2])
+        = streamMerge [streamExpand s1, streamExpand s2]`
 
-    27. `streamMerge [streamFilter f s1, streamFilter f s2]
-        = streamFilter f $ streammerge [s1, s2]`
+    27. `streamFilter f $ streammerge [s1, s2]
+        = streamMerge [streamFilter f s1, streamFilter f s2]`
 
 There are some issues to consider about constant or variable size of
 lists in the case where the stream data type is a list, such as after
