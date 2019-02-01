@@ -142,16 +142,26 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
 == Results
 
-     1. `filter f . filter g = filter (\x -> f x && g x)`
+     1. `streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)`
         total; fusion
 
-     2. (and 3, 4) `filter f . filterAcc  / filterAcc  . filter f`
-        promote filter f => filterAcc, then
-        filterAcc . filterAcc = ...
-        (partial: type unification issue; fusion)
-        XXX: expand these out
+     2. `streamFilter p2 . streamFilterAcc accfn acc p1
+         = streamFilterAcc accfn1 acc1 (\x a -> p1 x a && p2 x)`
+        total; fusion
 
-[start=5]
+     3. `streamFilterAcc accfn acc p2 . streamFilter p1 =
+         = streamFilterAcc (\a v -> if p1 v then accfn a v else a)
+         acc
+         (\x a -> p1 x && p2 x a)`
+        total; fusion
+
+     4. `streamFilterAcc accfn2 acc2 p2 . streamFilterAcc accfn1 acc1 p1
+         = streamFilterAcc
+           (\(x,y) v -> (accfn1 x v, if p1 v x then accfn2 y v else y))
+           (acc1,acc2)
+           (\x (y,z) -> p1 x y && p2 x z)`
+        total; fusion
+
      5. `streamFilter p . streamMap f = streamMap f . streamFilter (p . f)`
         total.
         efficiency of RHS:

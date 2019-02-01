@@ -64,6 +64,14 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 filterFilterAccPost2    = mkfAccFuse (\x v -> x) (0::Int) (\v _ -> g v) accfn1 acc1 pred1
 prop_filterFilterAcc2 s = filterFilterAccPre s == filterFilterAccPost2 s
 
+-- unwinding mkfAccFuse, for  convenience in the writeup
+filterFilterAccPost3    = streamFilterAcc
+    (\a v -> if g v then accfn1 a v else a)
+    acc1
+    (\x a -> g x && pred1 x a)
+
+prop_filterFilterAcc3 s = filterFilterAccPre s == filterFilterAccPost3 s
+
 -------------------------------------------------------------------------------
 -- streamFilter → streamMap
 -- streamMap f . streamFilter p = streamFilter (p . f) . streamMap f
@@ -126,6 +134,11 @@ filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
 filterAccFilterPost    = mkfAccFuse accfn1 acc1 pred1 (\_ v -> v) '0' (\v _ -> g v)
 prop_filterAccFilter s = filterFilterAccPre s == filterFilterAccPost s
 
+
+filterAccFilterPost2
+         = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
+
+prop_filterAccFilter2 s = filterAccFilterPre s == filterAccFilterPost2 s
 ------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilterAcc
 -- 4
