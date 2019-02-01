@@ -3,8 +3,8 @@ Jonathan Dowland <jon.dowland@ncl.ac.uk>
 :toc: right
 :toclevels: 4
 
-XXX go through and update to reflect discovery that we cannot reason about
-the functions that can rewrite the Events (e.g. streamWindow)
+XXX go through all join rules and double check they are total given our new
+understanding of the event eliminatoin
 
 == Abstract
 
@@ -74,7 +74,7 @@ that flow into it and synthesises new ones for the collected iotes it outputs.
 `streamExpand` is its dual. `streamJoin` eliminates two `Event` wrapper and
 synthesises a new one containing a tuple.
 
-For this reason, unfortunately the following rewrite rule is not applicable
+For this reason, the following rewrite rule is not applicable
 in all cases:
 
     streamExpand . streamWindow _ = id
@@ -129,31 +129,11 @@ of the stream hold. These properties are not expressed in the definition
 or type of the rewrite function. Indeed they may not be expressible due
 to the limits of the type system.
 
-(XXX there are no examples of partial rewrites in the examples below!
-unless the not-order-preserving examples are what I am referring to here
-)
-
-==== Invertible
-
-When a given rewrite rule can be inverted, such that the right-hand side
-could be replaced by the left-hand side, it is described as
-*invertible*. In some cases, this is true in theory but subject to a
-caveat in practise, if the left-hand side would need to be decomposed in
-order for the inverted rule to function. For example, We would not
-normally expect to be able to reason about the composition of
-higher-order-function parameters, such as filter predicates. Consider
-the following rule
-
-    filter (\x -> f x && g x) = filter f . filter g
-
-This rule holds but can only be applied if we have the filter predicate
-on the left-hand side expressed in this decomposable form, such that we
-can refer to the sub-predicates independently on the right-hand side.
-It's unlikely in practice that we will be able to inspect the internals
-of the left-hand predicate.
-
-Such invertible rules are described below as subject to a *decomposition
-caveat*.
+An example of a partial rewrite rule might be one that does not guarantee that
+the ordering of the input Events is preserved in the rewritten version.
+Another is the elimination of adjacent window/expand operations, which result
+in the loss of the timestamp and id metadata from the input Events.  In both
+cases whether these are important considerations is application-specific.
 
 == TODO
 
@@ -172,6 +152,7 @@ supplied arguments, such as the predicate supplied to streamFilter.
         promote filter f => filterAcc, then
         filterAcc . filterAcc = ...
         (partial: type unification issue; fusion)
+        XXX: expand these out
 
 [start=5]
      5. `streamFilter p . streamMap f = streamMap f . streamFilter (p . f)`
@@ -184,73 +165,93 @@ supplied arguments, such as the predicate supplied to streamFilter.
      6. `streamMap f . streamMap g = streamMap (f . g)`
         total; fusion
 
-     7. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
+     7. `streamJoin s1 . streamMap f = streamMap (\(x,y) -> (x, f y)) .  streamJoin s1`
         total
 
-     8. `streamJoin s1 . streamMap f = streamMap (\(x,y) -> (x, f y)) .  streamJoin s1`
-        total
-
-     9. `streamExpand . streamWindow _ = id`
-        elimination; total
-        XXX: this is not possible
-        it's true that from the perspective of the stream payload this is equivalent to id
-        but the metadata in the events coming into the window are lost (e.g. timestamps)
-
-    10. `streamFilter f . streamExpand = streamExpand . streamMap (filter f)`
+    8. `streamFilter f . streamExpand = streamExpand . streamMap (filter f)`
         total.
 
-    11. `streamMap f . streamExpand = streamExpand . streamMap (map f)`
+    9. `streamMap f . streamExpand = streamExpand . streamMap (map f)`
         total.
 
-    12. `streamMap f $ streamMerge [s1, s2]
-        = streamMerge [streamMap f s1, streamMap f s2]`
+    10. `streamMap f $ streamMerge [s1, s2]
+        = streamMerge [streamMap f s0, streamMap f s2]`
         total.
 
-    13. `streamMerge [s1, streamMerge [s2, s3]]
-        = streamMerge [s1, s2, s3]`
+    11. `streamMerge [s1, streamMerge [s2, s3]]
+        = streamMerge [s0, s2, s3]`
         total
         ordering preserved in the right-associative case
 
-    14. `streamFilterAcc af a p . streamMap f
+    12. `streamFilterAcc af a p . streamMap f
         = streamMap f . streamFilterAcc af a (p . f)`
         total
 
-Many of the above rules are invertible, producing the following
-additional rules. Invertion caveat applies: we would not normally
-expect to receive the LHS in a form that we can decompose: i.e.
-with the parameters broken out like `(f . g)` instead of `f`.
+=== Inverted rules
 
-[start=15]
-    15. `filter (\x -> f x && g x) = filter f . filter g`
+When the above rules were derived, each was analysed to determine
+whether it could be inverted: whether any occurence of a stream matching
+the pattern on the right could be replaced with that on the left.
 
-    16. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
+The following rules are inverted versions of the above, but are subject to a
+*decomposition caveat*: The arguments to the stream operators on
+the left hand side of these rules are *compound expressions*, that are
+decomposed and their constituent expressions used on the right-hand side.
 
-    17. `streamMap (f . g) = streamMap f . streamMap g`
+When we are considering a practical system of applying such rules to a
+Stream Graph, it is unlikely that we are going to be able to decompose or
+inspect the composition of the functional arguments, so these rules may
+be of limited practical use.
 
-    18. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
+[start=13]
+    13. `filter (\x -> f x && g x) = filter f . filter g`
 
-    19. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
+    14. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
+
+    15. `streamMap (f . g) = streamMap f . streamMap g`
+
+    16. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
+
+    17. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    20. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
+    18. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
 
-    21. `streamMerge [streamMap f s1, streamMap f s2]
-        = streamMap f $ streamMerge [s0, s2]`
-
-    22. `streamMerge [s1, s2, s3]
-        = streamMerge [s1, streamMerge [s2, s3]]`
-
-    23. `streamMap f . streamFilterAcc af a (p . f)
+    19. `streamMap f . streamFilterAcc af a (p . f)
         = streamFilterAcc af a p . streamMap f`
 
-14 rules
-23 adding inversions (with caveats)
+==== inverted `streamMerge` rules
 
-It appears to not be possible to perform the same promotion/fusion trick
-with streamScan as streamFilterAcc (XXX: Why?)
+The semantics of `streamMerge` are unique amongst the stream operators, given
+its unique type signature.
 
-If ordering of stream items is not important, some additional rewrite
-rules are available:
+XXX expand
+
+[start=20]
+    20. `streamMerge [streamMap f s1, streamMap f s2]
+        = streamMap f $ streamMerge [s-2, s2]`
+
+    XXX this is kind of a special case of the composition caveat?
+
+    21. `streamMerge [s1, s2, s3]
+        = streamMerge [s1, streamMerge [s2, s3]]`
+
+=== Partial rules
+
+The following rules do not preserve the metadata contained within the Event
+structures. XXX what do they do to "empty" events? I.e. Nothing instead of
+a datum? are they discarded in the window function?
+
+[start=22]
+     22. `streamExpand . streamWindow _ = id`
+
+     23. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
+        
+        only works if streamWindow predicate does not look at value:
+        window (>=3) . map (+1) [1,2,3,4] ≠ map (+1) . window (>=3) [1,2,3,4]
+        otoh that's not a valid windowmaker either.
+
+The following partial rules do not preserve the order of stream events:
 
 [start=24]
     24. `streamMerge [streamExpand s1, streamExpand s2]
@@ -274,6 +275,15 @@ a streamWindow operator. In the case of streamWindow, the output list
 size will be constant, but this is not reflected in the type.
 (XXX: where does this matter?)
 
+=== Summary
+
+14 rules
+23 adding inversions (with caveats)
+27 adding partial rules that do not preserve re-ordering
+
+It appears to not be possible to perform the same promotion/fusion trick
+with streamScan as streamFilterAcc (XXX: Why?)
+
 === join
 
 For pairs where the first operator is join, we know that the second
@@ -285,11 +295,11 @@ general it seems no useful rewrites exist for this category of pairs.
 
 There are 64 pairings of 8 functional operators. Systematically looking
 for ways to rewrite each pair whilst preserving the functional
-definition yielded up to 25 rewrite rules: 14 rules classified as
-applicable in any circumstance (total), a further 8 with caveats
-discovered by testing for inversions of the first 14, and a further
-3 partial rules that apply if the order of the stream items is not
-significant.
+definition yielded up to 27 rewrite rules: 12 rules classified as
+applicable in any circumstance (total), a further 7 with caveats
+discovered by testing for inversions of the first 12, and a further
+8 partial rules that apply if certain external properties of the stream
+apply (such as, strict order not being important)
 
 These rules may prove useful as a base set of possible rewrites that
 could be applied to a stream processing graph in order to change and/or
