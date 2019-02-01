@@ -24,6 +24,9 @@ the type of the stream, and quantify those requirements.
 description of striot
 selection of operators
 
+A *Stream* is a list of *Event*s. An *Event* has an Id field and might include an
+iota of data, (a datum?) and a timestamp.
+
 <table of operators>
 
     streamFilter    :: (a -> Bool) -> Stream a -> Stream a
@@ -39,26 +42,50 @@ Ignoring the stream-in, stream-out parameters, the first four operators are
 unary and their functional parameter operates on the payload of the stream,
 and not the stream itself (the types of the HoFs do not include Stream)
 
-The next four operators manipulate the structure of the stream itself.
-StreamWindow eliminates the Event wrappers around the iotas that flow into
-it and synthesises new ones for the collected iotes it outputs.
+The second set of four operators operate directly on Streams.
 
 == Method
 
 We constructed a list of operator pairs and considered each pair in
 sequence in order to systematically explore all possible combinations.
 For each pair, we initially attempted to reverse the order of the
-operators whilst preserving their behaviour. For pairs of the same
+operators whilst preserving the functional result of their combination
+on an input stream. For pairs of the same
 operator, we attempt to construct an equivalent, single, fused operator.
 For pairs of operators that are the dual of one another, we attempted to
 eliminate them.
 
 This method sometimes yielded a result that turned out not to behave
-identically to the original pair in some or all circumstances. We noted
-the behavioural differences
+identically to the original pair in some or all circumstances. If we
+thought the rewrite could still be useful in practise, we recorded it
+with the appropriate annotation.
 
 Once we had determined a viable rewrite rule, we examined whether its
 inverse was a second, distinct viable rule.
+
+=== Semantic analysis
+
+`streamMap` and `streamFilter` are stream variants of the widely used
+`map` and `filter` which have well understood semantics.
+
+`streamWindow`, `streamExpand` and `streamJoin` manipulate the structure of the
+stream itself: `streamWindow` eliminates the Event wrappers around the iotas
+that flow into it and synthesises new ones for the collected iotes it outputs.
+`streamExpand` is its dual. `streamJoin` eliminates two `Event` wrapper and
+synthesises a new one containing a tuple.
+
+For this reason, unfortunately the following rewrite rule is not applicable
+in all cases:
+
+    streamExpand . streamWindow _ = id
+
+This holds only in terms of the data encapsulated within the stream. But
+since `streamWindow` discards the `Event` wrappers around the iotas flowing
+into it, we lose the information contained therein, including the timestamp
+field.
+
+The type of `streamMerge` indicates that it could manipulate the input
+*Event*s, but we know in practise that it doesn't.
 
 === Tools
 
@@ -78,6 +105,8 @@ also helped to catch a few cases where we had authored a rewrite rule we
 thought was total, but wasn't. We then explored the failure cases to
 determine whether the rule needed to be thrown out, or was useful in
 some circumstances, in which case we noted the necessary caveats.
+
+XXX "total" mentioned in the para above; but defined below
 
 In order for QuickCheck to generate random Stream data, we were required
 to provide a trivial implementation of the Arbitrary class for the
@@ -127,10 +156,6 @@ Such invertible rules are described below as subject to a *decomposition
 caveat*.
 
 == TODO
-
-filter promotion to filterAcc: the technique used fixes the type of the
-spare accumulator (in this case to Char). This is probably not
-necessary, and might point at a wider problem.
 
 Classification of non-order-preserving rewrites: whether the re-ordering
 is determined *internally* or *externally*. Internally means that
