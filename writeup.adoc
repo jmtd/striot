@@ -194,6 +194,10 @@ supplied arguments, such as the predicate supplied to streamFilter.
         = streamMap f . streamFilterAcc af a (p . f)`
         total
 
+    13. `streamScan accfn acc . streamMap f
+        = streamScan (flip (flip accfn . f)) acc`
+        total
+
 === Inverted rules
 
 When the above rules were derived, each was analysed to determine
@@ -210,21 +214,21 @@ Stream Graph, it is unlikely that we are going to be able to decompose or
 inspect the composition of the functional arguments, so these rules may
 be of limited practical use.
 
-[start=13]
-    13. `filter (\x -> f x && g x) = filter f . filter g`
+[start=14]
+    14. `filter (\x -> f x && g x) = filter f . filter g`
 
-    14. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
+    15. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
 
-    15. `streamMap (f . g) = streamMap f . streamMap g`
+    16. `streamMap (f . g) = streamMap f . streamMap g`
 
-    16. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
+    17. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
 
-    17. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
+    18. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
         (XXX it would be good to write QuickCheck properties for the inversions)
 
-    18. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
+    19. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
 
-    19. `streamMap f . streamFilterAcc af a (p . f)
+    20. `streamMap f . streamFilterAcc af a (p . f)
         = streamFilterAcc af a p . streamMap f`
 
 ==== inverted `streamMerge` rules
@@ -234,13 +238,13 @@ its unique type signature.
 
 XXX expand
 
-[start=20]
-    20. `streamMerge [streamMap f s1, streamMap f s2]
-        = streamMap f $ streamMerge [s-2, s2]`
+[start=21]
+    21. `streamMerge [streamMap f s1, streamMap f s2]
+        = streamMap f $ streamMerge [s-1, s2]`
 
     XXX this is kind of a special case of the composition caveat?
 
-    21. `streamMerge [s1, s2, s3]
+    22. `streamMerge [s1, s2, s3]
         = streamMerge [s1, streamMerge [s2, s3]]`
 
 === Partial rules
@@ -249,10 +253,10 @@ The following rules do not preserve the metadata contained within the Event
 structures. XXX what do they do to "empty" events? I.e. Nothing instead of
 a datum? are they discarded in the window function?
 
-[start=22]
-     22. `streamExpand . streamWindow _ = id`
+[start=23]
+     23. `streamExpand . streamWindow _ = id`
 
-     23. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
+     24. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
         
         only works if streamWindow predicate does not look at value:
         window (>=3) . map (+1) [1,2,3,4] ≠ map (+1) . window (>=3) [1,2,3,4]
@@ -260,20 +264,20 @@ a datum? are they discarded in the window function?
 
 The following partial rules do not preserve the order of stream events:
 
-[start=24]
-    24. `streamMerge [streamExpand s1, streamExpand s2]
-        = streamExpand (streamMerge [s1,s2])`
+[start=25]
+    25. `streamMerge [streamExpand s1, streamExpand s2]
+        = streamExpand (streamMerge [s2,s2])`
 
-    25. `streamMerge [streamFilter f s1, streamFilter f s2]
+    26. `streamMerge [streamFilter f s1, streamFilter f s2]
         = streamFilter f $ streammerge [s1, s2]`
 
 and their inverses
 
-[start=26]
-    26. `streamExpand (streamMerge [s1,s2])
-        = streamMerge [streamExpand s1, streamExpand s2]`
+[start=27]
+    27. `streamExpand (streamMerge [s1,s2])
+        = streamMerge [streamExpand s2, streamExpand s2]`
 
-    27. `streamFilter f $ streammerge [s1, s2]
+    28. `streamFilter f $ streammerge [s1, s2]
         = streamMerge [streamFilter f s1, streamFilter f s2]`
 
 There are some issues to consider about constant or variable size of
@@ -284,9 +288,9 @@ size will be constant, but this is not reflected in the type.
 
 === Summary
 
-14 rules
+15 rules
 23 adding inversions (with caveats)
-27 adding partial rules that do not preserve re-ordering
+28 adding partial rules that do not preserve re-ordering
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (XXX: Why?)

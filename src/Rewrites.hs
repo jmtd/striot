@@ -74,20 +74,15 @@ prop_filterFilterAcc3 s = filterFilterAccPre s == filterFilterAccPost3 s
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamMap
--- streamMap f . streamFilter p = streamFilter (p . f) . streamMap f
 
-ff x = (iterate pred x) !! 32 -- 'a' -> 'A'
-p x  = x >= 'a' && x <= 'z'
-
-filterMapPre  = (streamMap ff . streamFilter p) sB
-filterMapPost = (streamFilter (p . ff) . streamMap ff) sB
--- this is wrong. we need the inverse of ff for the new predicate; and we can't
--- infer that from the types
+-- None:
+-- We would need the inverse of the map function
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamScan
 
--- XXX
+-- None:
+-- As above.
 
 -------------------------------------------------------------------------------
 -- streamFilter → streamWindow
@@ -124,6 +119,7 @@ pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 -- streamFilter → streamJoin
 
 -- Nothing
+-- TODO explain
 
 ------------------------------------------------------------------------------
 -- streamFilterAcc → streamFilter
@@ -178,7 +174,6 @@ prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 -- streamFilterAcc → streamMap
 
 -- Nothing -- see discussion in streamFilter → streamMap
--- XXX revisit
 
 -------------------------------------------------------------------------------
 -- streamFilterAcc → streamScan
@@ -188,8 +183,18 @@ prop_fAccfAcc2 s = fAccfAccPre2 s == fAccfAccPost2 s
 -------------------------------------------------------------------------------
 -- streamFilterAcc → streamWindow
 -- streamFilterAcc → streamExpand
+
+-- Nothing . See streamFilter → stream{Expand,Window}
+
+-------------------------------------------------------------------------------
 -- streamFilterAcc → streamMerge
+
+-- TODO
+
+-------------------------------------------------------------------------------
 -- streamFilterAcc → streamJoin
+
+-- TODO
 
 ------------------------------------------------------------------------------
 -- streamMap → streamFilter
@@ -231,6 +236,16 @@ prop_mapMap s = mapMapPre s == mapMapPost s
 
 ------------------------------------------------------------------------------
 -- streamMap → streamScan
+-- Fusion
+
+-- TODO better accumulator needed, one that does not ignore the value
+counter = \c v -> c+1
+
+mapScanPre  = streamScan counter 0 . streamMap succ
+mapScanPost = streamScan (flip (flip counter . succ)) 0
+
+prop_mapScan :: Stream Int -> Bool
+prop_mapScan s = mapScanPre s == mapScanPost s
 
 ------------------------------------------------------------------------------
 -- streamMap → streamWindow
@@ -271,7 +286,17 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 ------------------------------------------------------------------------------
 -- streamScan → streamFilter
 -- streamScan → streamFilterAcc
+------------------------------------------------------------------------------
 -- streamScan → streamMap
+
+-- Not possible? the problem is the succ-processed accumulator output is fed
+-- back in
+scanMapPre  = streamMap succ . streamScan counter 0
+scanMapPost :: Stream Char -> Stream Int
+scanMapPost = streamScan (\a v -> succ (counter a v)) 0
+
+--prop_scanMap s = scanMapPre s == scanMapPost s
+
 ------------------------------------------------------------------------------
 -- streamScan → streamScan
 
