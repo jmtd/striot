@@ -196,7 +196,7 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
     13. `streamScan accfn acc . streamMap f
         = streamScan (flip (flip accfn . f)) acc`
-        total
+        total; fusion
 
 === Inverted rules
 
