@@ -333,6 +333,7 @@ scanScanPre = streamScan foo 1 . streamScan bar 0
 -- streamWindow → streamFilter
 
 -- Nothing
+-- XXX explain
 
 ------------------------------------------------------------------------------
 -- streamWindow → streamFilterAcc
@@ -349,6 +350,7 @@ scanScanPre = streamScan foo 1 . streamScan bar 0
 -- streamWindow → streamWindow
 
 -- Nothing
+-- XXX explain
 
 -------------------------------------------------------------------------------
 -- streamWindow → streamExpand
