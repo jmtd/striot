@@ -21,6 +21,38 @@ main = htfMain htf_thisModulesTests
 -- filter predicates
 f = (>= 'a')
 g = (<= 'z')
+
+-- example arguments for streamFilterAcc
+-- alternating values only
+accfn2 _ v = v
+acc2 = '\NUL'
+pred2 = (/=)
+
+-- increasing values only
+accfn1 _ v = v
+acc1 = '\NUL'
+pred1 = (>=)
+
+-- avoids a situation where pred/succ will fail on the smallest/largest Enum type
+next :: (Eq a, Bounded a, Enum a) => a -> a
+next a = if a == maxBound then minBound else succ a
+prev :: (Eq a, Bounded a, Enum a) => a -> a
+prev a = if a == minBound then maxBound else pred a
+
+-- test streams of characters
+sA = [Event 0 Nothing (Just i)|i<-iterate next 'a']
+sB = [Event 0 Nothing (Just i)|i<-iterate next '0']
+sC = [Event 0 Nothing (Just i)|i<-iterate next 'A']
+sW = streamWindow (chop 2) sB
+
+-- utility functions for mapFilterAcc
+accfn acc _ = acc+1
+accpred dat acc = even acc
+
+-- an example of a streamScan argument
+-- TODO better accumulator needed, one that does not ignore the value
+counter = \c v -> c+1
+
 \end{code}
 //////////////////////////////////////////////////////////////////////////////
 
@@ -163,8 +195,7 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
 == Results
 
-     1. `streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)`
-        total; fusion
+1. `streamFilter` fusion (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -174,59 +205,166 @@ prop_filterFilter s = filterFilterPre s == filterFilterPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-     [start=2]
-     2. `streamFilter p2 . streamFilterAcc accfn acc p1
-         = streamFilterAcc accfn1 acc1 (\x a -> p1 x a && p2 x)`
-        total; fusion
+[start=2]
+2. `streamFilterAcc` and `streamFilter` fusion (total)
 
-     3. `streamFilterAcc accfn acc p2 . streamFilter p1 =
-         = streamFilterAcc (\a v -> if p1 v then accfn a v else a)
-         acc
-         (\x a -> p1 x && p2 x a)`
-        total; fusion
+\begin{code}
+------------------------------------------------------------------------------
+filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
+prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
+------------------------------------------------------------------------------
+\end{code}
 
-     4. `streamFilterAcc accfn2 acc2 p2 . streamFilterAcc accfn1 acc1 p1
-         = streamFilterAcc
-           (\(x,y) v -> (accfn1 x v, if p1 v x then accfn2 y v else y))
-           (acc1,acc2)
-           (\x (y,z) -> p1 x y && p2 x z)`
-        total; fusion
+[start=3]
+3. `streamFilter` and `streamFilterAcc` fusion (total)
 
-     5. `streamFilter p . streamMap f = streamMap f . streamFilter (p . f)`
-        total.
-        efficiency of RHS:
-        If p is highly selective, then the overhead of evaluating f
-        twice per selected event may be lower than the savings made by
-        reducing the list de/reconstruction overhead of streamMap.
+\begin{code}
+------------------------------------------------------------------------------
+filterFilterAccPre     = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
+filterFilterAccPost    =
+    streamFilterAcc
+        (\a v -> if g v then accfn1 a v else a)
+        acc1
+        (\x a -> g x && pred1 x a)
+prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
+------------------------------------------------------------------------------
+\end{code}
 
-     6. `streamMap f . streamMap g = streamMap (f . g)`
-        total; fusion
+[start=4]
+4. `streamFilterAcc` fusion (total)
 
-     7. `streamJoin s1 . streamMap f = streamMap (\(x,y) -> (x, f y)) .  streamJoin s1`
-        total
+\begin{code}
+------------------------------------------------------------------------------
+filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterAccPost    =
+    streamFilterAcc
+        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
+        (acc1,acc2)
+        (\x (y,z) -> pred1 x y && pred2 x z)
+prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
+------------------------------------------------------------------------------
+\end{code}
 
-    8. `streamFilter f . streamExpand = streamExpand . streamMap (filter f)`
-        total.
+[start=5]
+5. `streamMap` into `streamFilter`
+   Where `next` is the example map function (chooses the next item in a sequence
+   and wraps from the end to the start).
+   
+   If p is highly selective, then the overhead of evaluating f
+   twice per selected event may be lower than the savings made by
+   reducing the list de/reconstruction overhead of streamMap.
 
-    9. `streamMap f . streamExpand = streamExpand . streamMap (map f)`
-        total.
+\begin{code}
+------------------------------------------------------------------------------
+mapFilterPre     = streamFilter f . streamMap next
+mapFilterPost    = streamMap next . streamFilter (f . next)
+prop_mapFilter s = mapFilterPre s == mapFilterPost s
+------------------------------------------------------------------------------
+\end{code}
 
-    10. `streamMap f $ streamMerge [s1, s2]
-        = streamMerge [streamMap f s0, streamMap f s2]`
-        total.
+[begin=6]
+6. `streamMap` fusion (total)
 
-    11. `streamMerge [s1, streamMerge [s2, s3]]
-        = streamMerge [s0, s2, s3]`
-        total
+\begin{code}
+------------------------------------------------------------------------------
+mapMapPre :: Stream Char -> Stream Char
+mapMapPre     = streamMap next . streamMap next
+mapMapPost    = streamMap (next . next)
+prop_mapMap s = mapMapPre s == mapMapPost s
+------------------------------------------------------------------------------
+\end{code}
+
+[begin=7]
+7. `streamMap` into `streamJoin` (total)
+
+\begin{code}
+------------------------------------------------------------------------------
+mapJoinPre     = streamJoin sA . streamMap next
+mapJoinPost    = streamMap (\(x,y) -> (x, next y)) . streamJoin sA
+prop_mapJoin  :: Stream Char -> Bool
+prop_mapJoin s = mapJoinPre s == mapJoinPost s
+------------------------------------------------------------------------------
+\end{code}
+
+
+[start=8]
+8. `streamExpand` into `streamFilter` (total)
+   TODO consider the Event wrappers
+
+\begin{code}
+------------------------------------------------------------------------------
+expandFilterPre     = streamFilter f . streamExpand
+expandFilterPost    = streamExpand . streamMap (filter f)
+prop_expandFilter s = expandFilterPre s == expandFilterPost s
+------------------------------------------------------------------------------
+\end{code}
+
+[start=9]
+9. `streamExpand` into `streamMap` (total)
+   TODO consider the Event wrappers
+
+\begin{code}
+------------------------------------------------------------------------------
+expandMapPre     = streamMap next . streamExpand
+expandMapPost    = streamExpand . streamMap (map next)
+prop_expandMap :: Stream [Char] -> Bool
+prop_expandMap s = expandMapPre s == expandMapPost s
+------------------------------------------------------------------------------
+\end{code}
+
+[start=10]
+10. `streamMerge` into `streamMap`
+     (total)
+
+\begin{code}
+------------------------------------------------------------------------------
+mergeMapPre s   = streamMap isAscii $ streamMerge [sA, s]
+mergeMapPost s  = streamMerge [streamMap isAscii sA, streamMap isAscii s]
+-- expensive to evaluate, but passes
+pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
+------------------------------------------------------------------------------
+\end{code}
+
+[start=11]
+    11. `streamMerge` into `streamMerge`
+        (total)
         ordering preserved in the right-associative case
 
-    12. `streamFilterAcc af a p . streamMap f
-        = streamMap f . streamFilterAcc af a (p . f)`
-        total
+\begin{code}
+------------------------------------------------------------------------------
+mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
+mergeMergePost c = streamMerge [sA, sB, c]
+pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
+------------------------------------------------------------------------------
+\end{code}
 
-    13. `streamScan accfn acc . streamMap f
-        = streamScan (flip (flip accfn . f)) acc`
-        total; fusion
+[start=12]
+12. `streamMap` into `streamFilterAcc` (total)
+
+\begin{code}
+------------------------------------------------------------------------------
+mapFilterAccPre     = streamFilterAcc accfn 0 accpred . streamMap next
+mapFilterAccPost    = streamMap next . streamFilterAcc accfn 0 (accpred . next)
+prop_mapFilterAcc :: Stream Char -> Bool
+prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
+------------------------------------------------------------------------------
+\end{code}
+
+[start=13]
+13. `streamMap` into `streamScan`: a variant of fusion (total)
+
+        streamScan accfn acc . streamMap f = streamScan (flip (flip accfn . f)) acc`
+
+\begin{code}
+------------------------------------------------------------------------------
+mapScanPre  = streamScan counter 0 . streamMap next
+mapScanPost = streamScan (flip (flip counter . next)) 0
+
+prop_mapScan :: Stream Int -> Bool
+prop_mapScan s = mapScanPre s == mapScanPost s
+------------------------------------------------------------------------------
+\end{code}
 
 === Inverted rules
 
