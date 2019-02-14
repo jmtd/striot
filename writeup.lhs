@@ -2,6 +2,27 @@
 Jonathan Dowland <jon.dowland@ncl.ac.uk>
 :toc: right
 :toclevels: 4
+:code: 
+
+//////////////////////////////////////////////////////////////////////////////
+\begin{code}
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
+
+module Rewrites (htf_thisModulesTests) where
+
+import Data.List (sort)
+import Data.Char (isAscii)
+import Test.Framework
+import Striot.FunctionalIoTtypes
+import Striot.FunctionalProcessing
+
+main = htfMain htf_thisModulesTests
+
+-- filter predicates
+f = (>= 'a')
+g = (<= 'z')
+\end{code}
+//////////////////////////////////////////////////////////////////////////////
 
 == Abstract
 
@@ -145,6 +166,15 @@ supplied arguments, such as the predicate supplied to streamFilter.
      1. `streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)`
         total; fusion
 
+\begin{code}
+------------------------------------------------------------------------------
+filterFilterPre     = streamFilter g . streamFilter f
+filterFilterPost    = streamFilter (\x -> f x && g x)
+prop_filterFilter s = filterFilterPre s == filterFilterPost s
+------------------------------------------------------------------------------
+\end{code}
+
+     [start=2]
      2. `streamFilter p2 . streamFilterAcc accfn acc p1
          = streamFilterAcc accfn1 acc1 (\x a -> p1 x a && p2 x)`
         total; fusion
