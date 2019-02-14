@@ -5,6 +5,8 @@ Jonathan Dowland <jon.dowland@ncl.ac.uk>
 :code: 
 
 //////////////////////////////////////////////////////////////////////////////
+// boilerplate Haskell code that has to be at the start.
+// Utility code is at the end.
 \begin{code}
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
@@ -15,43 +17,6 @@ import Data.Char (isAscii)
 import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
-
-main = htfMain htf_thisModulesTests
-
--- filter predicates
-f = (>= 'a')
-g = (<= 'z')
-
--- example arguments for streamFilterAcc
--- alternating values only
-accfn2 _ v = v
-acc2 = '\NUL'
-pred2 = (/=)
-
--- increasing values only
-accfn1 _ v = v
-acc1 = '\NUL'
-pred1 = (>=)
-
--- avoids a situation where pred/succ will fail on the smallest/largest Enum type
-next :: (Eq a, Bounded a, Enum a) => a -> a
-next a = if a == maxBound then minBound else succ a
-prev :: (Eq a, Bounded a, Enum a) => a -> a
-prev a = if a == minBound then maxBound else pred a
-
--- test streams of characters
-sA = [Event 0 Nothing (Just i)|i<-iterate next 'a']
-sB = [Event 0 Nothing (Just i)|i<-iterate next '0']
-sC = [Event 0 Nothing (Just i)|i<-iterate next 'A']
-sW = streamWindow (chop 2) sB
-
--- utility functions for mapFilterAcc
-accfn acc _ = acc+1
-accpred dat acc = even acc
-
--- an example of a streamScan argument
--- TODO better accumulator needed, one that does not ignore the value
-counter = \c v -> c+1
 
 \end{code}
 //////////////////////////////////////////////////////////////////////////////
@@ -156,7 +121,7 @@ thought was total, but wasn't. We then explored the failure cases to
 determine whether the rule needed to be thrown out, or was useful in
 some circumstances, in which case we noted the necessary caveats.
 
-XXX "total" mentioned in the para above; but defined below
+TODO "total" mentioned in the para above; but defined below
 
 In order for QuickCheck to generate random Stream data, we were required
 to provide a trivial implementation of the Arbitrary class for the
@@ -194,6 +159,77 @@ operators; external means that it is dependent on one of the externally
 supplied arguments, such as the predicate supplied to streamFilter.
 
 == Results
+
+//////////////////////////////////////////////////////////////////////////////
+// To ensure all combinations have been covered, all pairs are listed here in
+// order, with those which do not yield a rewrite rule commented out.
+
+F  01: streamFilter . streamFilter
+X1 02: streamMap . streamFilter
+F  03: streamFilterAcc . streamFilter
+X1 04: streamScan . streamFilter
+X  05: streamWindow . streamFilter
+X4 06: streamExpand . streamFilter
+X5 07: streamJoin . streamFilter
+   08: streamMerge . streamFilter
+2  09: streamFilter . streamMap
+F  10: streamMap . streamMap
+5  11: streamFilterAcc . streamMap
+   12: streamScan . streamMap
+X  13: streamWindow . streamMap
+X4 14: streamExpand . streamMap
+   15: streamJoin . streamMap
+   16: streamMerge . streamMap
+F  17: streamFilter . streamFilterAcc
+X1 18: streamMap . streamFilterAcc
+F  19: streamFilterAcc . streamFilterAcc
+   20: streamScan . streamFilterAcc
+X  21: streamWindow . streamFilterAcc
+X4 22: streamExpand . streamFilterAcc
+X  23: streamJoin . streamFilterAcc
+X8 24: streamMerge . streamFilterAcc
+   25: streamFilter . streamScan
+   26: streamMap . streamScan
+   27: streamFilterAcc . streamScan
+X6 28: streamScan . streamScan
+X  29: streamWindow . streamScan
+X4 30: streamExpand . streamScan
+   31: streamJoin . streamScan
+   32: streamMerge . streamScan
+   33: streamFilter . streamWindow
+   34: streamMap . streamWindow
+   35: streamFilterAcc . streamWindow
+   36: streamScan . streamWindow
+   37: streamWindow . streamWindow
+X3 38: streamExpand . streamWindow
+X  39: streamJoin . streamWindow
+   40: streamMerge . streamWindow
+   41: streamFilter . streamExpand
+3  42: streamMap . streamExpand
+   43: streamFilterAcc . streamExpand
+   44: streamScan . streamExpand
+   45: streamWindow . streamExpand
+4  46: streamExpand . streamExpand
+X  47: streamJoin . streamExpand
+   48: streamMerge . streamExpand
+X2 49: streamFilter . streamJoin
+X2 50: streamMap . streamJoin
+X2 51: streamFilterAcc . streamJoin
+X2 52: streamScan . streamJoin
+X2 53: streamWindow . streamJoin
+X2 54: streamExpand . streamJoin
+X2 55: streamJoin . streamJoin
+X2 56: streamMerge . streamJoin
+8  57: streamFilter . streamMerge
+7  58: streamMap . streamMerge
+X8 59: streamFilterAcc . streamMerge
+X8 60: streamScan . streamMerge
+   61: streamWindow . streamMerge
+   62: streamExpand . streamMerge
+X  63: streamJoin . streamMerge
+F  64: streamMerge . streamMerge
+
+//////////////////////////////////////////////////////////////////////////////
 
 1. `streamFilter` fusion (total)
 
@@ -257,6 +293,8 @@ prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 
 \begin{code}
 ------------------------------------------------------------------------------
+-- TODO choice of f for filter and next for map is not particularly generic
+-- perhaps p for filter and f for map
 mapFilterPre     = streamFilter f . streamMap next
 mapFilterPost    = streamMap next . streamFilter (f . next)
 prop_mapFilter s = mapFilterPre s == mapFilterPost s
@@ -327,14 +365,14 @@ pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 \end{code}
 
 [start=11]
-    11. `streamMerge` into `streamMerge`
-        (total)
-        ordering preserved in the right-associative case
+11. `streamMerge` into `streamMerge`
+    (total)
+    ordering preserved in the right-associative case
 
 \begin{code}
 ------------------------------------------------------------------------------
-mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
-mergeMergePost c = streamMerge [sA, sB, c]
+mergeMergePre c   = streamMerge [sA, streamMerge [sB,c]]
+mergeMergePost c  = streamMerge [sA, sB, c]
 pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 ------------------------------------------------------------------------------
 \end{code}
@@ -354,12 +392,10 @@ prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
 [start=13]
 13. `streamMap` into `streamScan`: a variant of fusion (total)
 
-        streamScan accfn acc . streamMap f = streamScan (flip (flip accfn . f)) acc`
-
 \begin{code}
 ------------------------------------------------------------------------------
-mapScanPre  = streamScan counter 0 . streamMap next
-mapScanPost = streamScan (flip (flip counter . next)) 0
+mapScanPre     = streamScan scanfn 0 . streamMap next
+mapScanPost    = streamScan (flip (flip scanfn . next)) 0
 
 prop_mapScan :: Stream Int -> Bool
 prop_mapScan s = mapScanPre s == mapScanPost s
@@ -382,62 +418,84 @@ Stream Graph, it is unlikely that we are going to be able to decompose or
 inspect the composition of the functional arguments, so these rules may
 be of limited practical use.
 
+//////////////////////////////////////////////////////////////////////////////
+// there's no value in Haskell implementations for these
+//////////////////////////////////////////////////////////////////////////////
+
 [start=14]
-    14. `filter (\x -> f x && g x) = filter f . filter g`
+14. `filter (\x -> f x && g x) = filter f . filter g`
 
-    15. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
+15. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
 
-    16. `streamMap (f . g) = streamMap f . streamMap g`
+16. `streamMap (f . g) = streamMap f . streamMap g`
 
-    17. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
+17. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
 
-    18. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
-        (XXX it would be good to write QuickCheck properties for the inversions)
+18. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
 
-    19. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
+19. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
 
-    20. `streamMap f . streamFilterAcc af a (p . f)
-        = streamFilterAcc af a p . streamMap f`
+20. `streamMap f . streamFilterAcc af a (p . f)
+    = streamFilterAcc af a p . streamMap f`
 
 ==== inverted `streamMerge` rules
 
 The semantics of `streamMerge` are unique amongst the stream operators, given
 its unique type signature.
 
-XXX expand
+TODO expand
 
 [start=21]
-    21. `streamMerge [streamMap f s1, streamMap f s2]
-        = streamMap f $ streamMerge [s-1, s2]`
+21. `streamMerge [streamMap f s1, streamMap f s2]
+        = streamMap f $ streamMerge [s1, s2]`
 
-    XXX this is kind of a special case of the composition caveat?
+ TODO this is kind of a special case of the composition caveat?
 
-    22. `streamMerge [s1, s2, s3]
-        = streamMerge [s1, streamMerge [s2, s3]]`
+22. `streamMerge [s1, s2, s3] = streamMerge [s1, streamMerge [s2, s3]]`
 
 === Partial rules
 
 The following rules do not preserve the metadata contained within the Event
-structures. XXX what do they do to "empty" events? I.e. Nothing instead of
+structures. TODO what do they do to "empty" events? I.e. Nothing instead of
 a datum? are they discarded in the window function?
 
 [start=23]
-     23. `streamExpand . streamWindow _ = id`
+23. `streamExpand . streamWindow _ = id`
 
-     24. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
-        
-        only works if streamWindow predicate does not look at value:
-        window (>=3) . map (+1) [1,2,3,4] ≠ map (+1) . window (>=3) [1,2,3,4]
-        otoh that's not a valid windowmaker either.
+24. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
+
+    TODO:
+    only works if streamWindow predicate does not look at value:
+    window (>=3) . map (+1) [1,2,3,4] ≠ map (+1) . window (>=3) [1,2,3,4]
+    otoh that's not a valid windowmaker either.
 
 The following partial rules do not preserve the order of stream events:
 
 [start=25]
-    25. `streamMerge [streamExpand s1, streamExpand s2]
-        = streamExpand (streamMerge [s2,s2])`
+25. `streamMerge [streamExpand s1, streamExpand s2]
+    = streamExpand (streamMerge [s2,s2])`
 
-    26. `streamMerge [streamFilter f s1, streamFilter f s2]
-        = streamFilter f $ streammerge [s1, s2]`
+\begin{code}
+------------------------------------------------------------------------------
+expandMergePre s   = streamMerge [ streamExpand sW, streamExpand s ]
+expandMergePost s  = streamExpand (streamMerge [ sW, s ])
+-- this is very slow to execute but passes
+pxxp_expandMerge s = sort(expandMergePre s) == sort(expandMergePost s)
+------------------------------------------------------------------------------
+\end{code}
+
+[start=26]
+26. `streamMerge [streamFilter f s1, streamFilter f s2]
+    = streamFilter f $ streammerge [s1, s2]`
+
+\begin{code}
+------------------------------------------------------------------------------
+filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
+filterMergePost s  = streamFilter f $ streamMerge [sA, s]
+-- this is very slow to execute but passes
+pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
+------------------------------------------------------------------------------
+\end{code}
 
 and their inverses
 
@@ -452,7 +510,7 @@ There are some issues to consider about constant or variable size of
 lists in the case where the stream data type is a list, such as after
 a streamWindow operator. In the case of streamWindow, the output list
 size will be constant, but this is not reflected in the type.
-(XXX: where does this matter?)
+(TODO : where does this matter?)
 
 === Summary
 
@@ -461,7 +519,7 @@ size will be constant, but this is not reflected in the type.
 28 adding partial rules that do not preserve re-ordering
 
 It appears to not be possible to perform the same promotion/fusion trick
-with streamScan as streamFilterAcc (XXX: Why?)
+with streamScan as streamFilterAcc (TODO: Why?)
 
 === join
 
@@ -502,3 +560,48 @@ further 6 rewrite rules could be applied.
 
 - [[[QuickCheck]]]
 - [[[HTF]]]
+
+//////////////////////////////////////////////////////////////////////////////
+// Utility Haskell code, required by the inline examples
+\begin{code}
+
+main = htfMain htf_thisModulesTests
+
+-- filter predicates
+f = (>= 'a')
+g = (<= 'z')
+
+-- example arguments for streamFilterAcc
+-- alternating values only
+accfn2 _ v = v
+acc2 = '\NUL'
+pred2 = (/=)
+
+-- increasing values only
+accfn1 _ v = v
+acc1 = '\NUL'
+pred1 = (>=)
+
+-- avoids a situation where pred/succ will fail on the smallest/largest Enum type
+next :: (Eq a, Bounded a, Enum a) => a -> a
+next a = if a == maxBound then minBound else succ a
+prev :: (Eq a, Bounded a, Enum a) => a -> a
+prev a = if a == minBound then maxBound else pred a
+
+-- test streams of characters
+sA = [Event 0 Nothing (Just i)|i<-iterate next 'a']
+sB = [Event 0 Nothing (Just i)|i<-iterate next '0']
+sC = [Event 0 Nothing (Just i)|i<-iterate next 'A']
+sW = streamWindow (chop 2) sB
+
+-- utility functions for mapFilterAcc
+accfn acc _ = acc+1
+accpred dat acc = even acc
+
+-- an example of a streamScan argument
+-- TODO better accumulator needed, one that does not ignore the value
+counter = \c v -> c+1
+scanfn  = counter
+
+\end{code}
+//////////////////////////////////////////////////////////////////////////////
