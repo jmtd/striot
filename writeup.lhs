@@ -340,6 +340,17 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 
 // 8  16  streamMerge . streamMap
 
+1. `streamMerge . streamMap`
+
+\begin{code}
+------------------------------------------------------------------------------
+mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
+mapMergePost s = streamMap next $ streamMerge [sA,s]
+-- TODO: no longer completes after making sA infinite
+pxxp_mapMerge s = mapMergePre s == mapMergePost s
+------------------------------------------------------------------------------
+\end{code}
+
 // F  17: streamFilter . streamFilterAcc
 
 [start=2]
@@ -402,7 +413,7 @@ windowMergePost s = streamWindow frob (streamMerge [sA,s])
 -- failing
 test_windowMerge = assertBool $ take 10 (windowMergePre sB) == take 10 (windowMergePost sB)
 
--- XXX doesn't work: failing on an empty list?
+-- TODO: doesn't work: failing on an empty list?
 -- Behaviour when sampling <10 is different (due to frob impl)
 prop_windowMerge s = windowMergePre s == windowMergePost s
 ------------------------------------------------------------------------------
