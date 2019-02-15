@@ -186,7 +186,6 @@ TODO explanations for why the combinations are ruled out where possible
 // X3 38: streamExpand . streamWindow
 // X  39: streamJoin . streamWindow
 // X  47: streamJoin . streamExpand
-// TODO what happened to 48?
 // X2 49: streamFilter . streamJoin
 // X2 50: streamMap . streamJoin
 // X2 51: streamFilterAcc . streamJoin
@@ -457,11 +456,31 @@ prop_expandExpand s = expandExpandPre s == expandExpandPost s
 ------------------------------------------------------------------------------
 \end{code}
 
+// 12 48: streamMerge . streamExpand
+
+1. `streamMerge [streamExpand s2, streamExpand s2]
+    = streamExpand (streamMerge [s1,s2])`
+
+\begin{code}
+------------------------------------------------------------------------------
+expandMergePre s = streamMerge [streamExpand w1, streamExpand w2] where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+expandMergePost = streamExpand (streamMerge [w1,w2]) where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+-- expensive, passes
+pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
+------------------------------------------------------------------------------
+\end{code}
+
 // 3 62: streamExpand . streamMerge
 
 [start=27]
-    27. `streamExpand (streamMerge [s1,s2])
-        = streamMerge [streamExpand s2, streamExpand s2]`
+27. `streamExpand (streamMerge [s1,s2])
+    = streamMerge [streamExpand s2, streamExpand s2]`
 
 \begin{code}
 ------------------------------------------------------------------------------
