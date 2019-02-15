@@ -545,7 +545,7 @@ expandMergePre s = streamMerge [streamExpand w1, streamExpand w2] where
     w1 = streamWindow (chop 2) sA
     w2 = streamWindow (chop 2) s
 
-expandMergePost = streamExpand (streamMerge [w1,w2]) where
+expandMergePost s = streamExpand (streamMerge [w1,w2]) where
     w1 = streamWindow (chop 2) sA
     w2 = streamWindow (chop 2) s
 
