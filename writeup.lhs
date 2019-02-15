@@ -160,78 +160,47 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
 == Results
 
-//////////////////////////////////////////////////////////////////////////////
-// To ensure all combinations have been covered, all pairs are listed here in
-// order, with those which do not yield a rewrite rule commented out.
+=== Combinations that yield no rules
 
-F  01: streamFilter . streamFilter
-X1 02: streamMap . streamFilter
-F  03: streamFilterAcc . streamFilter
-X1 04: streamScan . streamFilter
-X  05: streamWindow . streamFilter
-X4 06: streamExpand . streamFilter
-X5 07: streamJoin . streamFilter
-   08: streamMerge . streamFilter
-2  09: streamFilter . streamMap
-F  10: streamMap . streamMap
-5  11: streamFilterAcc . streamMap
-   12: streamScan . streamMap
-X  13: streamWindow . streamMap
-X4 14: streamExpand . streamMap
-   15: streamJoin . streamMap
-   16: streamMerge . streamMap
-F  17: streamFilter . streamFilterAcc
-X1 18: streamMap . streamFilterAcc
-F  19: streamFilterAcc . streamFilterAcc
-   20: streamScan . streamFilterAcc
-X  21: streamWindow . streamFilterAcc
-X4 22: streamExpand . streamFilterAcc
-X  23: streamJoin . streamFilterAcc
-X8 24: streamMerge . streamFilterAcc
-   25: streamFilter . streamScan
-   26: streamMap . streamScan
-   27: streamFilterAcc . streamScan
-X6 28: streamScan . streamScan
-X  29: streamWindow . streamScan
-X4 30: streamExpand . streamScan
-   31: streamJoin . streamScan
-   32: streamMerge . streamScan
-   33: streamFilter . streamWindow
-   34: streamMap . streamWindow
-   35: streamFilterAcc . streamWindow
-   36: streamScan . streamWindow
-   37: streamWindow . streamWindow
-X3 38: streamExpand . streamWindow
-X  39: streamJoin . streamWindow
-   40: streamMerge . streamWindow
-   41: streamFilter . streamExpand
-3  42: streamMap . streamExpand
-   43: streamFilterAcc . streamExpand
-   44: streamScan . streamExpand
-   45: streamWindow . streamExpand
-4  46: streamExpand . streamExpand
-X  47: streamJoin . streamExpand
-   48: streamMerge . streamExpand
-X2 49: streamFilter . streamJoin
-X2 50: streamMap . streamJoin
-X2 51: streamFilterAcc . streamJoin
-X2 52: streamScan . streamJoin
-X2 53: streamWindow . streamJoin
-X2 54: streamExpand . streamJoin
-X2 55: streamJoin . streamJoin
-X2 56: streamMerge . streamJoin
-8  57: streamFilter . streamMerge
-7  58: streamMap . streamMerge
-X8 59: streamFilterAcc . streamMerge
-X8 60: streamScan . streamMerge
-   61: streamWindow . streamMerge
-   62: streamExpand . streamMerge
-X  63: streamJoin . streamMerge
-F  64: streamMerge . streamMerge
+// format of rules in comments
+//  X  Y: operator2 . operator1
+// where X is the reference into the grid for the rule (or no rule, e.g. X1)
+// and Y is the sequential number for this combination of operators from systematic generation
 
-//////////////////////////////////////////////////////////////////////////////
+// X1 02: streamMap . streamFilter
+// X1 04: streamScan . streamFilter
+// X  05: streamWindow . streamFilter
+// X4 06: streamExpand . streamFilter
+// X5 07: streamJoin . streamFilter
+// X4 14: streamExpand . streamMap
+// X1 18: streamMap . streamFilterAcc
+// X  21: streamWindow . streamFilterAcc
+// X4 22: streamExpand . streamFilterAcc
+// X  23: streamJoin . streamFilterAcc
+// X8 24: streamMerge . streamFilterAcc
+// X6 28: streamScan . streamScan
+// X  29: streamWindow . streamScan
+// X4 30: streamExpand . streamScan
+// X3 38: streamExpand . streamWindow
+// X  39: streamJoin . streamWindow
+// X  47: streamJoin . streamExpand
+// X2 49: streamFilter . streamJoin
+// X2 50: streamMap . streamJoin
+// X2 51: streamFilterAcc . streamJoin
+// X2 52: streamScan . streamJoin
+// X2 53: streamWindow . streamJoin
+// X2 54: streamExpand . streamJoin
+// X2 55: streamJoin . streamJoin
+// X2 56: streamMerge . streamJoin
+// X8 59: streamFilterAcc . streamMerge
+// X8 60: streamScan . streamMerge
+// X  63: streamJoin . streamMerge
+
+=== Rewrites
 
 1. `streamFilter` fusion (total)
+
+// F  01: streamFilter . streamFilter
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -241,19 +210,10 @@ prop_filterFilter s = filterFilterPre s == filterFilterPost s
 ------------------------------------------------------------------------------
 \end{code}
 
+// F  03: streamFilterAcc . streamFilter
+
 [start=2]
-2. `streamFilterAcc` and `streamFilter` fusion (total)
-
-\begin{code}
-------------------------------------------------------------------------------
-filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
-filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
-prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
-------------------------------------------------------------------------------
-\end{code}
-
-[start=3]
-3. `streamFilter` and `streamFilterAcc` fusion (total)
+2. `streamFilter` and `streamFilterAcc` fusion (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -267,20 +227,22 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-[start=4]
-4. `streamFilterAcc` fusion (total)
+//    08: streamMerge . streamFilter
+
+[start=26]
+26. `streamMerge [streamFilter f s1, streamFilter f s2]
+    = streamFilter f $ streammerge [s1, s2]`
 
 \begin{code}
 ------------------------------------------------------------------------------
-filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
-filterAccFilterAccPost    =
-    streamFilterAcc
-        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
-        (acc1,acc2)
-        (\x (y,z) -> pred1 x y && pred2 x z)
-prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
+filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
+filterMergePost s  = streamFilter f $ streamMerge [sA, s]
+-- this is very slow to execute but passes
+pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 ------------------------------------------------------------------------------
 \end{code}
+
+// 2  09: streamFilter . streamMap
 
 [start=5]
 5. `streamMap` into `streamFilter`
@@ -301,6 +263,8 @@ prop_mapFilter s = mapFilterPre s == mapFilterPost s
 ------------------------------------------------------------------------------
 \end{code}
 
+// F  10: streamMap . streamMap
+
 [begin=6]
 6. `streamMap` fusion (total)
 
@@ -313,69 +277,7 @@ prop_mapMap s = mapMapPre s == mapMapPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-[begin=7]
-7. `streamMap` into `streamJoin` (total)
-
-\begin{code}
-------------------------------------------------------------------------------
-mapJoinPre     = streamJoin sA . streamMap next
-mapJoinPost    = streamMap (\(x,y) -> (x, next y)) . streamJoin sA
-prop_mapJoin  :: Stream Char -> Bool
-prop_mapJoin s = mapJoinPre s == mapJoinPost s
-------------------------------------------------------------------------------
-\end{code}
-
-
-[start=8]
-8. `streamExpand` into `streamFilter` (total)
-   TODO consider the Event wrappers
-
-\begin{code}
-------------------------------------------------------------------------------
-expandFilterPre     = streamFilter f . streamExpand
-expandFilterPost    = streamExpand . streamMap (filter f)
-prop_expandFilter s = expandFilterPre s == expandFilterPost s
-------------------------------------------------------------------------------
-\end{code}
-
-[start=9]
-9. `streamExpand` into `streamMap` (total)
-   TODO consider the Event wrappers
-
-\begin{code}
-------------------------------------------------------------------------------
-expandMapPre     = streamMap next . streamExpand
-expandMapPost    = streamExpand . streamMap (map next)
-prop_expandMap :: Stream [Char] -> Bool
-prop_expandMap s = expandMapPre s == expandMapPost s
-------------------------------------------------------------------------------
-\end{code}
-
-[start=10]
-10. `streamMerge` into `streamMap`
-     (total)
-
-\begin{code}
-------------------------------------------------------------------------------
-mergeMapPre s   = streamMap isAscii $ streamMerge [sA, s]
-mergeMapPost s  = streamMerge [streamMap isAscii sA, streamMap isAscii s]
--- expensive to evaluate, but passes
-pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
-------------------------------------------------------------------------------
-\end{code}
-
-[start=11]
-11. `streamMerge` into `streamMerge`
-    (total)
-    ordering preserved in the right-associative case
-
-\begin{code}
-------------------------------------------------------------------------------
-mergeMergePre c   = streamMerge [sA, streamMerge [sB,c]]
-mergeMergePost c  = streamMerge [sA, sB, c]
-pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
-------------------------------------------------------------------------------
-\end{code}
+// 5  11: streamFilterAcc . streamMap
 
 [start=12]
 12. `streamMap` into `streamFilterAcc` (total)
@@ -388,6 +290,8 @@ prop_mapFilterAcc :: Stream Char -> Bool
 prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
 ------------------------------------------------------------------------------
 \end{code}
+
+//    12: streamScan . streamMap
 
 [start=13]
 13. `streamMap` into `streamScan`: a variant of fusion (total)
@@ -402,107 +306,172 @@ prop_mapScan s = mapScanPre s == mapScanPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-=== Inverted rules
+// X  13: streamWindow . streamMap
 
-When the above rules were derived, each was analysed to determine
-whether it could be inverted: whether any occurence of a stream matching
-the pattern on the right could be replaced with that on the left.
-
-The following rules are inverted versions of the above, but are subject to a
-*decomposition caveat*: The arguments to the stream operators on
-the left hand side of these rules are *compound expressions*, that are
-decomposed and their constituent expressions used on the right-hand side.
-
-When we are considering a practical system of applying such rules to a
-Stream Graph, it is unlikely that we are going to be able to decompose or
-inspect the composition of the functional arguments, so these rules may
-be of limited practical use.
-
-//////////////////////////////////////////////////////////////////////////////
-// there's no value in Haskell implementations for these
-//////////////////////////////////////////////////////////////////////////////
-
-[start=14]
-14. `filter (\x -> f x && g x) = filter f . filter g`
-
-15. `streamMap f . streamFilter (p . f) = streamFilter p . streamMap f`
-
-16. `streamMap (f . g) = streamMap f . streamMap g`
-
-17. `streamMap (\(x,y) -> (x, f y)) . streamJoin s1 = streamJoin s1 . streamMap f`
-
-18. `streamExpand . streamMap (filter f) = streamFilter f .  streamExpand`
-
-19. `streamExpand . streamMap (map f) = streamMap f . streamExpand`
-
-20. `streamMap f . streamFilterAcc af a (p . f)
-    = streamFilterAcc af a p . streamMap f`
-
-==== inverted `streamMerge` rules
-
-The semantics of `streamMerge` are unique amongst the stream operators, given
-its unique type signature.
-
-TODO expand
-
-[start=21]
-21. `streamMerge [streamMap f s1, streamMap f s2]
-        = streamMap f $ streamMerge [s1, s2]`
-
- TODO this is kind of a special case of the composition caveat?
-
-22. `streamMerge [s1, s2, s3] = streamMerge [s1, streamMerge [s2, s3]]`
-
-=== Partial rules
-
-The following rules do not preserve the metadata contained within the Event
-structures. TODO what do they do to "empty" events? I.e. Nothing instead of
-a datum? are they discarded in the window function?
-
-[start=23]
-23. `streamExpand . streamWindow _ = id`
-
-24. `streamWindow w . streamMap f = streamMap (map f) . streamWindow w`
-
-    TODO:
-    only works if streamWindow predicate does not look at value:
-    window (>=3) . map (+1) [1,2,3,4] ≠ map (+1) . window (>=3) [1,2,3,4]
-    otoh that's not a valid windowmaker either.
-
-The following partial rules do not preserve the order of stream events:
-
-[start=25]
-25. `streamMerge [streamExpand s1, streamExpand s2]
-    = streamExpand (streamMerge [s2,s2])`
+[start=999]
+1. `streamMap` into `streamWindow`
 
 \begin{code}
 ------------------------------------------------------------------------------
-expandMergePre s   = streamMerge [ streamExpand sW, streamExpand s ]
-expandMergePost s  = streamExpand (streamMerge [ sW, s ])
--- this is very slow to execute but passes
-pxxp_expandMerge s = sort(expandMergePre s) == sort(expandMergePost s)
+mapWindowPre :: Stream Char -> Stream [Char]
+mapWindowPre     = streamWindow (chop 2) . streamMap next
+mapWindowPost    = streamMap (map next) . streamWindow (chop 2)
+prop_mapWindow s = mapWindowPre s == mapWindowPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-[start=26]
-26. `streamMerge [streamFilter f s1, streamFilter f s2]
-    = streamFilter f $ streammerge [s1, s2]`
+//    15: streamJoin . streamMap
+
+[begin=7]
+7. `streamMap` into `streamJoin` (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
-filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
-filterMergePost s  = streamFilter f $ streamMerge [sA, s]
--- this is very slow to execute but passes
-pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
+mapJoinPre     = streamJoin sA . streamMap next
+mapJoinPost    = streamMap (\(x,y) -> (x, next y)) . streamJoin sA
+prop_mapJoin  :: Stream Char -> Bool
+prop_mapJoin s = mapJoinPre s == mapJoinPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-and their inverses
+// F  17: streamFilter . streamFilterAcc
+
+[start=2]
+2. `streamFilterAcc` and `streamFilter` fusion (total)
+
+\begin{code}
+------------------------------------------------------------------------------
+filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
+prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
+------------------------------------------------------------------------------
+\end{code}
+
+// F  19: streamFilterAcc . streamFilterAcc
+
+[start=4]
+4. `streamFilterAcc` fusion (total)
+
+\begin{code}
+------------------------------------------------------------------------------
+filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterAccPost    =
+    streamFilterAcc
+        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
+        (acc1,acc2)
+        (\x (y,z) -> pred1 x y && pred2 x z)
+prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
+------------------------------------------------------------------------------
+\end{code}
+
+// ?  20: streamScan . streamFilterAcc
+// ?  25: streamFilter . streamScan
+// ?  26: streamMap . streamScan
+// ?  27: streamFilterAcc . streamScan
+// ?  31: streamJoin . streamScan
+// ?  32: streamMerge . streamScan
+// ?  33: streamFilter . streamWindow
+// ?  34: streamMap . streamWindow
+// ?  35: streamFilterAcc . streamWindow
+// ?  36: streamScan . streamWindow
+// ?  37: streamWindow . streamWindow
+
+// 11 40: streamMerge . streamWindow
+
+[start=668]
+1. `streamWindow` into `streamMerge`
+
+\begin{code}
+------------------------------------------------------------------------------
+frob :: WindowMaker a -- Stream a -> [Stream a]
+frob [] = []
+frob s = let [x1,y1,x2,y2,x3,y3,x4,y4,x5,y5] = take 10 s
+         in [x1,x2,x3,x4,x5] : [y1,y2,y3,y4,y5] : (frob (drop 10 s))
+
+windowMergePre s = streamMerge [ streamWindow (chop 5) sA
+                               , streamWindow (chop 5) s ]
+
+windowMergePost s = streamWindow frob (streamMerge [sA,s])
+
+-- failing
+test_windowMerge = assertBool $ take 10 (windowMergePre sB) == take 10 (windowMergePost sB)
+
+-- XXX doesn't work: failing on an empty list?
+-- Behaviour when sampling <10 is different (due to frob impl)
+prop_windowMerge s = windowMergePre s == windowMergePost s
+------------------------------------------------------------------------------
+\end{code}
+
+// 9  41: streamFilter . streamExpand
+
+[start=8]
+8. `streamExpand` into `streamFilter` (total)
+   TODO consider the Event wrappers
+
+\begin{code}
+------------------------------------------------------------------------------
+expandFilterPre     = streamFilter f . streamExpand
+expandFilterPost    = streamExpand . streamMap (filter f)
+prop_expandFilter s = expandFilterPre s == expandFilterPost s
+------------------------------------------------------------------------------
+\end{code}
+
+// 3  42: streamMap . streamExpand
+
+[start=9]
+9. `streamExpand` into `streamMap` (total)
+   TODO consider the Event wrappers
+
+\begin{code}
+------------------------------------------------------------------------------
+expandMapPre     = streamMap next . streamExpand
+expandMapPost    = streamExpand . streamMap (map next)
+prop_expandMap :: Stream [Char] -> Bool
+prop_expandMap s = expandMapPre s == expandMapPost s
+------------------------------------------------------------------------------
+\end{code}
+
+// ?  43: streamFilterAcc . streamExpand
+// ?  44: streamScan . streamExpand
+// ?  45: streamWindow . streamExpand
+
+// 4  46: streamExpand . streamExpand
+
+[start=666]
+1. `streamExpand` into `streamExpand`
+
+\begin{code}
+------------------------------------------------------------------------------
+expandExpandPre     = streamExpand . streamExpand
+expandExpandPost    = streamExpand . streamMap concat
+prop_expandExpand :: Stream [[Char]] -> Bool
+prop_expandExpand s = expandExpandPre s == expandExpandPost s
+------------------------------------------------------------------------------
+\end{code}
+
+// 3 62: streamExpand . streamMerge
 
 [start=27]
     27. `streamExpand (streamMerge [s1,s2])
         = streamMerge [streamExpand s2, streamExpand s2]`
 
+\begin{code}
+------------------------------------------------------------------------------
+mergeExpandPre s = streamExpand (streamMerge [w1,w2]) where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+-- *very* expensive to evaluate
+-- passes
+pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
+------------------------------------------------------------------------------
+\end{code}
+
+[start=28]
     28. `streamFilter f $ streammerge [s1, s2]
         = streamMerge [streamFilter f s1, streamFilter f s2]`
 
@@ -593,6 +562,7 @@ sA = [Event 0 Nothing (Just i)|i<-iterate next 'a']
 sB = [Event 0 Nothing (Just i)|i<-iterate next '0']
 sC = [Event 0 Nothing (Just i)|i<-iterate next 'A']
 sW = streamWindow (chop 2) sB
+sWW= streamWindow (chop 3) sW
 
 -- utility functions for mapFilterAcc
 accfn acc _ = acc+1
@@ -602,6 +572,9 @@ accpred dat acc = even acc
 -- TODO better accumulator needed, one that does not ignore the value
 counter = \c v -> c+1
 scanfn  = counter
+
+-- for convenient interactive debugging 
+jClean = map (\(Event _ _ (Just x)) -> x)
 
 \end{code}
 //////////////////////////////////////////////////////////////////////////////
