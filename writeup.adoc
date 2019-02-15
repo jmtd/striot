@@ -1,3 +1,9 @@
+// this is both an AsciiDoc document and Literate Haskell source code.
+// For GitHub to automatically render it as HTML, the extension needs to be
+// .adoc. For GHC to accept it as (literate) Haskell, the extension needs to
+// be .lhs. I maintain a local symlink for convenience, the committed version
+// is .adoc (GitHub wins)
+
 = Rewrites
 Jonathan Dowland <jon.dowland@ncl.ac.uk>
 :toc: right
