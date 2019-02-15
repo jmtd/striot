@@ -180,10 +180,39 @@ TODO explanations for why the combinations are ruled out where possible
 // X4 22: streamExpand . streamFilterAcc
 // X  23: streamJoin . streamFilterAcc
 // X8 24: streamMerge . streamFilterAcc
+
+
 // X6 28: streamScan . streamScan
+
+//////////////////////////////////////////////////////////////////////////////
+the problem is the accumulator of scan is not hidden (like filterAcc); it's
+the return value! so we can't easily hide our work
+//////////////////////////////////////////////////////////////////////////////
+
 // X  29: streamWindow . streamScan
 // X4 30: streamExpand . streamScan
+
+
 // X3 38: streamExpand . streamWindow
+
+38. `streamExpand . streamWindow`
+
+TODO expand
+only applies if we ignore Event metadata
+
+\begin{code}
+------------------------------------------------------------------------------
+windowExpandPre n    = streamExpand . streamWindow (chop n)
+prop_windowExpand1  :: Stream Char -> Bool
+prop_windowExpand1 s = (windowExpandPre 2) s == s
+
+-- works but expensive to evaluate
+pxxp_windowExpand2 :: Int -> Stream Char -> Bool
+pxxp_windowExpand2 n s = (windowExpandPre n) s == s
+------------------------------------------------------------------------------
+\end{code}
+
+
 // X  39: streamJoin . streamWindow
 // X  47: streamJoin . streamExpand
 // X2 49: streamFilter . streamJoin
@@ -383,7 +412,26 @@ prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 
 // ?  20: streamScan . streamFilterAcc
 // ?  25: streamFilter . streamScan
+
+
 // ?  26: streamMap . streamScan
+
+TODO not possible?
+
+//////////////////////////////////////////////////////////////////////////////
+\begin{code}
+------------------------------------------------------------------------------
+-- Not possible? the problem is the succ-processed accumulator output is fed
+-- back in
+scanMapPre  = streamMap succ . streamScan counter 0
+scanMapPost :: Stream Char -> Stream Int
+scanMapPost = streamScan (\a v -> succ (counter a v)) 0
+--prop_scanMap s = scanMapPre s == scanMapPost s
+------------------------------------------------------------------------------
+\end{code}
+//////////////////////////////////////////////////////////////////////////////
+
+
 // ?  27: streamFilterAcc . streamScan
 // ?  31: streamJoin . streamScan
 // ?  32: streamMerge . streamScan
@@ -450,7 +498,27 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 
 // ?  43: streamFilterAcc . streamExpand
 // ?  44: streamScan . streamExpand
+
 // ?  45: streamWindow . streamExpand
+
+45. `streamWindow . streamExpand`
+
+TODO write about the caveat that this only applies if we ignore the metadata
+in the event wrappers?
+
+\begin{code}
+------------------------------------------------------------------------------
+expandWindowPre1 n= streamWindow (chop n) . streamExpand
+expandWindowPost1 = id
+
+-- XXX it would be nice to use quickCheck to choose a window size, but we need
+-- to limit it to very small numbers (<10 or so) and that's tricky to specify;
+-- and HTF does not support QuickCheck's guard scheme n < 10 ==> ...
+prop_expandWindow1 :: Stream Char -> Bool
+prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 w
+    where w = streamWindow (chop 2) s
+------------------------------------------------------------------------------
+\end{code}
 
 // 4  46: streamExpand . streamExpand
 
