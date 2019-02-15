@@ -162,6 +162,8 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
 === Combinations that yield no rules
 
+TODO explanations for why the combinations are ruled out where possible
+
 // format of rules in comments
 //  X  Y: operator2 . operator1
 // where X is the reference into the grid for the rule (or no rule, e.g. X1)
@@ -184,6 +186,7 @@ supplied arguments, such as the predicate supplied to streamFilter.
 // X3 38: streamExpand . streamWindow
 // X  39: streamJoin . streamWindow
 // X  47: streamJoin . streamExpand
+// TODO what happened to 48?
 // X2 49: streamFilter . streamJoin
 // X2 50: streamMap . streamJoin
 // X2 51: streamFilterAcc . streamJoin
@@ -192,9 +195,12 @@ supplied arguments, such as the predicate supplied to streamFilter.
 // X2 54: streamExpand . streamJoin
 // X2 55: streamJoin . streamJoin
 // X2 56: streamMerge . streamJoin
+// TODO what happened to 57,58?
 // X8 59: streamFilterAcc . streamMerge
 // X8 60: streamScan . streamMerge
+// TODO what happened to 61?
 // X  63: streamJoin . streamMerge
+// TODO what happened to 64?
 
 === Rewrites
 
@@ -333,6 +339,8 @@ prop_mapJoin  :: Stream Char -> Bool
 prop_mapJoin s = mapJoinPre s == mapJoinPost s
 ------------------------------------------------------------------------------
 \end{code}
+
+// 8  16  streamMerge . streamMap
 
 // F  17: streamFilter . streamFilterAcc
 
