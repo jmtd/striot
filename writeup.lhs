@@ -194,12 +194,11 @@ TODO explanations for why the combinations are ruled out where possible
 // X2 54: streamExpand . streamJoin
 // X2 55: streamJoin . streamJoin
 // X2 56: streamMerge . streamJoin
-// TODO what happened to 57,58?
 // X8 59: streamFilterAcc . streamMerge
 // X8 60: streamScan . streamMerge
-// TODO what happened to 61?
+// X? 61  streamWindow . streamMerge
 // X  63: streamJoin . streamMerge
-// TODO what happened to 64?
+
 
 === Rewrites
 
@@ -476,6 +475,28 @@ pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
 ------------------------------------------------------------------------------
 \end{code}
 
+//  8 57: streamFilter . streamMerge
+
+\begin{code}
+------------------------------------------------------------------------------
+mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
+mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
+-- this is very slow to execute but passes
+pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
+------------------------------------------------------------------------------
+\end{code}
+
+//  7 58: streamMap . streamMerge
+
+\begin{code}
+------------------------------------------------------------------------------
+mergeMapPre s  = streamMap isAscii $ streamMerge [sA, s]
+mergeMapPost s = streamMerge [streamMap isAscii sA, streamMap isAscii s]
+-- expensive to evaluate -- passes
+pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
+------------------------------------------------------------------------------
+\end{code}
+
 // 3 62: streamExpand . streamMerge
 
 [start=27]
@@ -507,6 +528,20 @@ lists in the case where the stream data type is a list, such as after
 a streamWindow operator. In the case of streamWindow, the output list
 size will be constant, but this is not reflected in the type.
 (TODO : where does this matter?)
+
+// .  64: streamMerge . streamMerge
+
+[start=64]
+64. `streamMerge` fusion
+
+\begin{code}
+------------------------------------------------------------------------------
+mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
+mergeMergePost c = streamMerge [sA, sB, c]
+-- passes but very expensive
+pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
+------------------------------------------------------------------------------
+\end{code}
 
 === Summary
 
