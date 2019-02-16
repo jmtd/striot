@@ -176,12 +176,29 @@ TODO explanations for why the combinations are ruled out where possible
 // and Y is the sequential number for this combination of operators from systematic generation
 
 // X1 02: streamMap . streamFilter
+
+02. `streamMap . streamFilter`
+
+In order to apply `streamFilter` after `streamMap` (with argument type *(a →
+b)*), we need a means of converting the Events into the original type, i.e.,
+*(b → a)*, but we don't have it (in general `streamMap` is not reversible)
+
 // X1 04: streamScan . streamFilter
+
+Same reasoning as 02.
+
 // X  05: streamWindow . streamFilter
 // X4 06: streamExpand . streamFilter
 // X5 07: streamJoin . streamFilter
 // X4 14: streamExpand . streamMap
 // X1 18: streamMap . streamFilterAcc
+
+Same reasoning as 02.
+
+// X  20: streamScan . streamFilterAcc
+
+Same reasoning as 02.
+
 // X  21: streamWindow . streamFilterAcc
 // X4 22: streamExpand . streamFilterAcc
 // X  23: streamJoin . streamFilterAcc
@@ -233,7 +250,6 @@ pxxp_windowExpand2 n s = (windowExpandPre n) s == s
 // X8 60: streamScan . streamMerge
 // X? 61  streamWindow . streamMerge
 // X  63: streamJoin . streamMerge
-
 
 === Rewrites
 
@@ -416,7 +432,7 @@ prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-// ?  20: streamScan . streamFilterAcc
+
 // ?  25: streamFilter . streamScan
 
 
