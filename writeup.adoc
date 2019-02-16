@@ -505,6 +505,27 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 // ?  43: streamFilterAcc . streamExpand
 // ?  44: streamScan . streamExpand
 
+44. `streamScan . streamExpand`
+
+nope?
+
+\begin{code}
+------------------------------------------------------------------------------
+scanExpandPre  = (streamScan (\b a -> b+1) (0::Int)). streamExpand
+-- [1,2,3,4,5,6,7,8,9,10]
+scanExpandPost = streamExpand . streamMap (scanl (\b a -> b+1) (0::Int))
+-- [0,1,2,0,1,2,0,1,2,0]
+-- fails as expected
+
+scanExpandPost2 = streamExpand . streamScan (\b a -> scanl (\c _ -> c+1) (1 + last b) a) [0::Int]
+-- very close, but it outputs too much (furthr array contents after end of data)
+
+prop_scanExpand :: Stream [Char] -> Bool
+prop_scanExpand s = scanExpandPre s == scanExpandPost2 s
+------------------------------------------------------------------------------
+\end{code}
+
+
 // ?  45: streamWindow . streamExpand
 
 45. `streamWindow . streamExpand`
