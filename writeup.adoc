@@ -509,6 +509,12 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 
 nope?
 
+if this did work, it's specialised to the streamScan parameter (in this case
+counter) and not general (it's nearly there! we have to futz with the initial
+accumulator value but the old accumulator is embedded pristine in the new one)
+
+TODO feed that terminology upwards
+
 \begin{code}
 ------------------------------------------------------------------------------
 scanExpandPre  = (streamScan (\b a -> b+1) (0::Int)). streamExpand
@@ -517,8 +523,8 @@ scanExpandPost = streamExpand . streamMap (scanl (\b a -> b+1) (0::Int))
 -- [0,1,2,0,1,2,0,1,2,0]
 -- fails as expected
 
-scanExpandPost2 = streamExpand . streamScan (\b a -> scanl (\c _ -> c+1) (1 + last b) a) [0::Int]
--- very close, but it outputs too much (furthr array contents after end of data)
+scanExpandPost2 = streamExpand . streamScan (\b a -> init $ scanl (\c _ -> c+1) (1 + last b) a) [0::Int]
+-- fails if we receive an empty list in an Event
 
 prop_scanExpand :: Stream [Char] -> Bool
 prop_scanExpand s = scanExpandPre s == scanExpandPost2 s
