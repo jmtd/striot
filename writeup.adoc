@@ -523,24 +523,26 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 
 44. `streamScan . streamExpand`
 
-nope?
-
-if this did work, it's specialised to the streamScan parameter (in this case
-counter) and not general (it's nearly there! we have to futz with the initial
-accumulator value but the old accumulator is embedded pristine in the new one)
+TODO possibly not generalised (works for the streamScan 'counter' example)
 
 TODO feed that terminology upwards
 
 \begin{code}
 ------------------------------------------------------------------------------
-scanExpandPre  = (streamScan (\b a -> b+1) (0::Int)). streamExpand
 
--- this won't work, it needs to propagate the accumulator between invocations
--- of scanl:
---scanExpandPost = streamExpand . streamMap (scanl (\b a -> b+1) (0::Int))
+initCounter = 0 :: Int
+
+scanExpandPre  = (streamScan scanfn initCounter). streamExpand
+
+-- we need to propagate the accumulator value between invocations of scanl
+
+-- unlike streamScan, scanl returns the accumulator seed as the first value,
+-- without applying the accumulator to it. That's why we have pre-applied the
+-- accumulator before passing it scanl. This works for the 'counter' example;
+-- I'm not sure yet if it is more general.
 
 scanExpandPost = streamExpand
-    . streamScan (\b a -> init $ scanl (\c _ -> c+1) (1 + last b) a) [0::Int]
+    . streamScan (\b a -> init $ scanl scanfn (scanfn (last b) a) a) [initCounter]
     . streamFilter (/=[])
 
 prop_scanExpand :: Stream [Char] -> Bool
