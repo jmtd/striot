@@ -534,16 +534,17 @@ TODO feed that terminology upwards
 \begin{code}
 ------------------------------------------------------------------------------
 scanExpandPre  = (streamScan (\b a -> b+1) (0::Int)). streamExpand
--- [1,2,3,4,5,6,7,8,9,10]
-scanExpandPost = streamExpand . streamMap (scanl (\b a -> b+1) (0::Int))
--- [0,1,2,0,1,2,0,1,2,0]
--- fails as expected
 
-scanExpandPost2 = streamExpand . streamScan (\b a -> init $ scanl (\c _ -> c+1) (1 + last b) a) [0::Int]
--- fails if we receive an empty list in an Event
+-- this won't work, it needs to propagate the accumulator between invocations
+-- of scanl:
+--scanExpandPost = streamExpand . streamMap (scanl (\b a -> b+1) (0::Int))
+
+scanExpandPost = streamExpand
+    . streamScan (\b a -> init $ scanl (\c _ -> c+1) (1 + last b) a) [0::Int]
+    . streamFilter (/=[])
 
 prop_scanExpand :: Stream [Char] -> Bool
-prop_scanExpand s = scanExpandPre s == scanExpandPost2 s
+prop_scanExpand s = scanExpandPre s == scanExpandPost s
 ------------------------------------------------------------------------------
 \end{code}
 
