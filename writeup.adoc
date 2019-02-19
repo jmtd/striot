@@ -541,12 +541,29 @@ scanExpandPre  = (streamScan scanfn initCounter). streamExpand
 -- accumulator before passing it scanl. This works for the 'counter' example;
 -- I'm not sure yet if it is more general.
 
+-- this change here seems to have forced the input type to Stream [Char] huh?
+-- I can only assume it's to do with the type I forced on prop_scanExpand
+-- it still passes!
 scanExpandPost = streamExpand
-    . streamScan (\b a -> init $ scanl scanfn (scanfn (last b) a) a) [initCounter]
+    . streamScan (\b a -> tail $ scanl scanfn (last b) a) [initCounter]
     . streamFilter (/=[])
 
 prop_scanExpand :: Stream [Char] -> Bool
 prop_scanExpand s = scanExpandPre s == scanExpandPost s
+
+scanfn2 b a = if a > b then 1 else if b == a then 0 else -1
+scanAcc2 = 0
+
+scanExpandPre2 = (streamScan scanfn2 scanAcc2) . streamExpand
+
+scanExpandPost2= streamExpand
+    . streamScan (\b a -> tail $ scanl scanfn2 (last b) a) [scanAcc2]
+    . streamFilter (/=[])
+
+-- TODO the type is forced to Stream [Integer], possibly by scanAcc2,
+-- but it shouldn' tbe
+prop_scanExpand2 :: Stream [Integer] -> Bool
+prop_scanExpand2 s = scanExpandPre2 s == scanExpandPost2 s
 ------------------------------------------------------------------------------
 \end{code}
 
