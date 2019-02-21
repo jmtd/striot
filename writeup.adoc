@@ -251,24 +251,29 @@ pxxp_windowExpand2 n s = (windowExpandPre n) s == s
 // X? 61  streamWindow . streamMerge
 // X  63: streamJoin . streamMerge
 
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 === Rewrites
 
-1. `streamFilter` fusion (total)
-
-// F  01: streamFilter . streamFilter
+1. `streamFilter . streamFilter` fusion
+   (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
 filterFilterPre     = streamFilter g . streamFilter f
 filterFilterPost    = streamFilter (\x -> f x && g x)
 prop_filterFilter s = filterFilterPre s == filterFilterPost s
+prop_filterFilter2 s=
+    (streamFilter g . streamFilter f) s == streamFilter (\x -> f x && g x) s
 ------------------------------------------------------------------------------
 \end{code}
 
 // F  03: streamFilterAcc . streamFilter
 
-[start=2]
-2. `streamFilter` and `streamFilterAcc` fusion (total)
+[start=3]
+2. `streamFilterAcc . streamFilter`
+   (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -284,8 +289,8 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 
 //    08: streamMerge . streamFilter
 
-[start=26]
-26. `streamMerge [streamFilter f s1, streamFilter f s2]
+[start=8]
+3. `streamMerge [streamFilter f s1, streamFilter f s2]
     = streamFilter f $ streammerge [s1, s2]`
 
 \begin{code}
@@ -294,13 +299,14 @@ filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
 filterMergePost s  = streamFilter f $ streamMerge [sA, s]
 -- this is very slow to execute but passes
 pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
+prop_filterMerge2 s = filterMergePre s == filterMergePost s
 ------------------------------------------------------------------------------
 \end{code}
 
 // 2  09: streamFilter . streamMap
 
-[start=5]
-5. `streamMap` into `streamFilter`
+[start=9]
+4. `streamMap` into `streamFilter`
    Where `next` is the example map function (chooses the next item in a sequence
    and wraps from the end to the start).
    
@@ -320,8 +326,8 @@ prop_mapFilter s = mapFilterPre s == mapFilterPost s
 
 // F  10: streamMap . streamMap
 
-[begin=6]
-6. `streamMap` fusion (total)
+[start=10]
+5. `streamMap` fusion (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -334,8 +340,8 @@ prop_mapMap s = mapMapPre s == mapMapPost s
 
 // 5  11: streamFilterAcc . streamMap
 
-[start=12]
-12. `streamMap` into `streamFilterAcc` (total)
+[start=11]
+6. `streamMap` into `streamFilterAcc` (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -348,8 +354,8 @@ prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
 
 //    12: streamScan . streamMap
 
-[start=13]
-13. `streamMap` into `streamScan`: a variant of fusion (total)
+[start=12]
+1. `streamScan . streamMap`: a variant of fusion (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -363,8 +369,8 @@ prop_mapScan s = mapScanPre s == mapScanPost s
 
 // X  13: streamWindow . streamMap
 
-[start=999]
-1. `streamMap` into `streamWindow`
+[start=13]
+1. `streamWindow . streamMap`
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -377,8 +383,8 @@ prop_mapWindow s = mapWindowPre s == mapWindowPost s
 
 //    15: streamJoin . streamMap
 
-[begin=7]
-7. `streamMap` into `streamJoin` (total)
+[start=15]
+1. `streamJoin . streamMap` (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -391,6 +397,7 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 
 // 8  16  streamMerge . streamMap
 
+[start=16]
 1. `streamMerge . streamMap`
 
 \begin{code}
@@ -404,8 +411,9 @@ pxxp_mapMerge s = mapMergePre s == mapMergePost s
 
 // F  17: streamFilter . streamFilterAcc
 
-[start=2]
-2. `streamFilterAcc` and `streamFilter` fusion (total)
+[start=17]
+1. `streamFilter . streamFilterAcc`
+   (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -417,8 +425,8 @@ prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
 
 // F  19: streamFilterAcc . streamFilterAcc
 
-[start=4]
-4. `streamFilterAcc` fusion (total)
+[start=19]
+1. `streamFilterAcc` fusion (total)
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -465,8 +473,8 @@ scanMapPost = streamScan (\a v -> succ (counter a v)) 0
 
 // 11 40: streamMerge . streamWindow
 
-[start=668]
-1. `streamWindow` into `streamMerge`
+[start=40]
+1. `streamMerge . streamWindow`
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -491,8 +499,9 @@ prop_windowMerge s = windowMergePre s == windowMergePost s
 
 // 9  41: streamFilter . streamExpand
 
-[start=8]
-8. `streamExpand` into `streamFilter` (total)
+[start=41]
+1. `streamFilter . streamExpand`
+   (total)
    TODO consider the Event wrappers
 
 \begin{code}
@@ -505,8 +514,9 @@ prop_expandFilter s = expandFilterPre s == expandFilterPost s
 
 // 3  42: streamMap . streamExpand
 
-[start=9]
-9. `streamExpand` into `streamMap` (total)
+[start=42]
+1. `streamMap . streamExpand`
+   (total)
    TODO consider the Event wrappers
 
 \begin{code}
@@ -521,6 +531,7 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 // ?  43: streamFilterAcc . streamExpand
 // ?  44: streamScan . streamExpand
 
+[start=44]
 44. `streamScan . streamExpand`
 
 TODO possibly not generalised (works for the streamScan 'counter' example)
@@ -570,6 +581,7 @@ prop_scanExpand2 s = scanExpandPre2 s == scanExpandPost2 s
 
 // ?  45: streamWindow . streamExpand
 
+[start=45]
 45. `streamWindow . streamExpand`
 
 TODO write about the caveat that this only applies if we ignore the metadata
@@ -591,8 +603,8 @@ prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 w
 
 // 4  46: streamExpand . streamExpand
 
-[start=666]
-1. `streamExpand` into `streamExpand`
+[start=46]
+1. `streamExpand . streamExpand`
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -605,6 +617,7 @@ prop_expandExpand s = expandExpandPre s == expandExpandPost s
 
 // 12 48: streamMerge . streamExpand
 
+[start=48]
 1. `streamMerge [streamExpand s2, streamExpand s2]
     = streamExpand (streamMerge [s1,s2])`
 
@@ -625,6 +638,9 @@ pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
 
 //  8 57: streamFilter . streamMerge
 
+[start=57]
+1. `streamFilter . streamMerge`
+
 \begin{code}
 ------------------------------------------------------------------------------
 mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
@@ -634,7 +650,18 @@ pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 ------------------------------------------------------------------------------
 \end{code}
 
+There are some issues to consider about constant or variable size of
+lists in the case where the stream data type is a list, such as after
+a streamWindow operator. In the case of streamWindow, the output list
+size will be constant, but this is not reflected in the type.
+(TODO : where does this matter?)
+
+
+
 //  7 58: streamMap . streamMerge
+
+[start=58]
+1. `streamMap . streamMerge`
 
 \begin{code}
 ------------------------------------------------------------------------------
@@ -647,8 +674,8 @@ pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 
 // 3 62: streamExpand . streamMerge
 
-[start=27]
-27. `streamExpand (streamMerge [s1,s2])
+[start=62]
+1. `streamExpand (streamMerge [s1,s2])
     = streamMerge [streamExpand s2, streamExpand s2]`
 
 \begin{code}
@@ -666,16 +693,6 @@ mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
 pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 ------------------------------------------------------------------------------
 \end{code}
-
-[start=28]
-    28. `streamFilter f $ streammerge [s1, s2]
-        = streamMerge [streamFilter f s1, streamFilter f s2]`
-
-There are some issues to consider about constant or variable size of
-lists in the case where the stream data type is a list, such as after
-a streamWindow operator. In the case of streamWindow, the output list
-size will be constant, but this is not reflected in the type.
-(TODO : where does this matter?)
 
 // .  64: streamMerge . streamMerge
 
