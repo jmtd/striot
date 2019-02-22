@@ -299,7 +299,8 @@ filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
 filterMergePost s  = streamFilter f $ streamMerge [sA, s]
 -- this is very slow to execute but passes
 pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
-prop_filterMerge2 s = filterMergePre s == filterMergePost s
+-- OOM
+pxxp_filterMerge2 s = filterMergePre s == filterMergePost s
 ------------------------------------------------------------------------------
 \end{code}
 
@@ -587,6 +588,10 @@ prop_scanExpand2 s = scanExpandPre2 s == scanExpandPost2 s
 TODO write about the caveat that this only applies if we ignore the metadata
 in the event wrappers?
 
+This is very specific to the WindowMaker in the streamWindow that is not in
+consideration here (whatever created the windows that are consumed by
+streamExpand.). So it's sooo specific I think this is ruled out.
+
 \begin{code}
 ------------------------------------------------------------------------------
 expandWindowPre1 n= streamWindow (chop n) . streamExpand
@@ -710,9 +715,12 @@ pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 
 === Summary
 
-15 rules
-23 adding inversions (with caveats)
-28 adding partial rules that do not preserve re-ordering
+23 rules
+
+TODO any inversions? with or without caveats? (without caveats would probably
+be caught just through the systematic approach)
+
+?? adding partial rules that do not preserve re-ordering
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (TODO: Why?)
