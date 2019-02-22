@@ -204,6 +204,15 @@ Same reasoning as 02.
 // X  23: streamJoin . streamFilterAcc
 // X8 24: streamMerge . streamFilterAcc
 
+// X7  25: streamFilter . streamScan
+
+We can't compose the arguments from streamScan with the predicate from streamFilter
+and get the same results since we can't thread the result back in as per streamScan
+(consider trying this with "counter")
+
+// X7  27: streamFilterAcc . streamScan
+
+As above.
 
 // X6 28: streamScan . streamScan
 
@@ -444,10 +453,6 @@ prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-
-// ?  25: streamFilter . streamScan
-
-
 // ?  26: streamMap . streamScan
 
 TODO not possible?
@@ -466,7 +471,6 @@ scanMapPost = streamScan (\a v -> succ (counter a v)) 0
 //////////////////////////////////////////////////////////////////////////////
 
 
-// ?  27: streamFilterAcc . streamScan
 // ?  31: streamJoin . streamScan
 // ?  32: streamMerge . streamScan
 // ?  33: streamFilter . streamWindow
