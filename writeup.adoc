@@ -298,6 +298,7 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
 filterMergePost s  = streamFilter f $ streamMerge [sA, s]
 -- this is very slow to execute but passes
+-- OOM
 pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 -- OOM
 pxxp_filterMerge2 s = filterMergePre s == filterMergePost s
@@ -406,6 +407,7 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
 mapMergePost s = streamMap next $ streamMerge [sA,s]
 -- TODO: no longer completes after making sA infinite
+-- OOM
 pxxp_mapMerge s = mapMergePre s == mapMergePost s
 ------------------------------------------------------------------------------
 \end{code}
@@ -637,6 +639,7 @@ expandMergePost s = streamExpand (streamMerge [w1,w2]) where
     w2 = streamWindow (chop 2) s
 
 -- expensive, passes
+-- OOM
 pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
 ------------------------------------------------------------------------------
 \end{code}
@@ -651,6 +654,7 @@ pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
 mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
 mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
 -- this is very slow to execute but passes
+-- OOM
 pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 ------------------------------------------------------------------------------
 \end{code}
@@ -673,6 +677,7 @@ size will be constant, but this is not reflected in the type.
 mergeMapPre s  = streamMap isAscii $ streamMerge [sA, s]
 mergeMapPost s = streamMerge [streamMap isAscii sA, streamMap isAscii s]
 -- expensive to evaluate -- passes
+-- OOM
 pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 ------------------------------------------------------------------------------
 \end{code}
@@ -695,6 +700,7 @@ mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
 
 -- *very* expensive to evaluate
 -- passes
+-- OOM
 pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 ------------------------------------------------------------------------------
 \end{code}
@@ -709,6 +715,7 @@ pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
 mergeMergePost c = streamMerge [sA, sB, c]
 -- passes but very expensive
+-- OOM
 pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 ------------------------------------------------------------------------------
 \end{code}
