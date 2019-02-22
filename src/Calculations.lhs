@@ -15,14 +15,8 @@ any rights for adaptation or redistribution.
 > import Rewrites
 > import Utilities (compose)
 
-> data Calculation = Calc Expr [Step] --deriving (Eq)
+> data Calculation = Calc Expr [Step] deriving (Eq)
 > type Step        = (LawName,Expr)
-
-jon hack - to aid in deduplicating calcs based on their penultimate insrtuction
-penultimate to avoid "promote" - we should just delete promote instead perhaps
-
-> instance Eq Calculation where
->   Calc e1 ss1 == Calc e2 ss2 = (snd . last) ss1 == (snd . last) ss2
 
 > calculate :: [Law] -> Expr -> Calculation 
 > calculate laws e = Calc e (manyStep rws e)

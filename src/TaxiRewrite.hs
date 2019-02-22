@@ -21,9 +21,13 @@ fusedAcc  accfn1 accfn2 pred1         (x,y) v = (accfn1 x v, if pred1 v x then a
 fusedPred               pred1 pred2   x (y,z) = pred1 x y && pred2 x z
 comma = (,)
 
+-- hacks for filter/filterAcc fusion
+fAcc  p f  = \a v -> if p v then f a v else a
+fPred p q  = \v a -> p v && q v a
+fPred2 p q = \v a -> p v a && q v
+
 -- XXX: encode the remaining transformations in particular streamJoin and streamFilterAcc transformations
 mylaws = map (parse law) [ {-1-} "defn filterfuse: streamFilter f . streamFilter g = streamFilter (zomg f g)"
-                           {-2,3,4  versions of filterAcc/filter fusion (XXX explicitly number each instance)-}
                          , {-5-} "defn mapFilter:  streamFilter p . streamMap f = streamMap f . streamFilter (p . f)"
                          , {-6-} "defn mapfuse:    streamMap f . streamMap g = streamMap (f . g)"
                          , {-7-} "defn mapWindow:  streamWindow w . streamMap f = streamMap (map f) . streamWindow w"
@@ -37,24 +41,23 @@ mylaws = map (parse law) [ {-1-} "defn filterfuse: streamFilter f . streamFilter
                          {- 21,22 merge, skipping --}
                          {- 23-26 merge/expand and inverses, skipping -}
 
+                         , "defn mapFilterAcc: \
+\                           streamFilterAcc g a p . streamMap f \
+\                           = streamMap f . streamFilterAcc g a (p . f)"
 
-                         {- streamFilterAcc . streamFilter is built up in two phases
-                                    streamFilter promoted to streamFilterAcc (see promote, below)
-                                    application of streamFilterAcc . streamFilterAcc
-                            thus we don't need a separate rule for streamFilterAcc . streamFilter
-                         -}
+                         , "defn filterFilterAcc: \
+\                           streamFilterAcc f a q . streamFilter p \
+\                           = streamFilterAcc (fAcc p f) a (fPred p q)"
+
+                         , "defn filterAccFilter: \
+\                           streamFilter q . streamFilterAcc f a p \
+\                           = streamFilterAcc f a (fPred2 p q)"
 
                          , "defn filterAccfilterAcc: \
 \                          streamFilterAcc f2 a2 p2 . streamFilterAcc f1 a1 p1\
 \                        = streamFilterAcc (fusedAcc f1 f2 p1) (comma a1 a2) (fusedPred p1 p2)"
 
                          , "defn FilterAccMap: streamFilterAcc f2 a p . streamMap f = streamMap f . streamFilterAcc f2 a (p . f)"
-
-
-                         -- XXX this rule is only useful if it opens up other possibilies, i.e., we can fuse
-                         -- two adjacent streamFilterAcc afterwards. I'd also like more assurance that it is
-                         -- correct (this is an anon-lambda-free translation of the original version)
-                         , "defn promote:    streamFilter p = streamFilterAcc (flip const) p (p . const)"
                          ]
 
 taxiQ1 = parse expr $ concat [ "streamFilterAcc a1 a p2" -- journeyChanges
