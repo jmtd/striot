@@ -164,6 +164,9 @@ the re-ordering is entirely determined by the composition of stream
 operators; external means that it is dependent on one of the externally
 supplied arguments, such as the predicate supplied to streamFilter.
 
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 == Results
 
 === Combinations that yield no rules
@@ -210,9 +213,14 @@ We can't compose the arguments from streamScan with the predicate from streamFil
 and get the same results since we can't thread the result back in as per streamScan
 (consider trying this with "counter")
 
+// X9  26: streamMap . streamScan
+
+Not possible: the problem is the streamMap-arg-processed accumulator output is
+fed back in
+
 // X7  27: streamFilterAcc . streamScan
 
-As above.
+As 25, above.
 
 // X6 28: streamScan . streamScan
 
@@ -452,24 +460,6 @@ filterAccFilterAccPost    =
 prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 ------------------------------------------------------------------------------
 \end{code}
-
-// ?  26: streamMap . streamScan
-
-TODO not possible?
-
-//////////////////////////////////////////////////////////////////////////////
-\begin{code}
-------------------------------------------------------------------------------
--- Not possible? the problem is the succ-processed accumulator output is fed
--- back in
-scanMapPre  = streamMap succ . streamScan counter 0
-scanMapPost :: Stream Char -> Stream Int
-scanMapPost = streamScan (\a v -> succ (counter a v)) 0
---prop_scanMap s = scanMapPre s == scanMapPost s
-------------------------------------------------------------------------------
-\end{code}
-//////////////////////////////////////////////////////////////////////////////
-
 
 // ?  31: streamJoin . streamScan
 // ?  32: streamMerge . streamScan
