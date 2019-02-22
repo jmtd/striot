@@ -293,6 +293,10 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 3. `streamMerge [streamFilter f s1, streamFilter f s2]
     = streamFilter f $ streammerge [s1, s2]`
 
+This is not "total", because ordering is not preserved.
+
+TODO move out of this section?
+
 \begin{code}
 ------------------------------------------------------------------------------
 filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
@@ -404,7 +408,7 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 ------------------------------------------------------------------------------
 mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
 mapMergePost s = streamMap next $ streamMerge [sA,s]
--- TODO: no longer completes after making sA infinite
+-- passes but slow
 pxxp_mapMerge s = mapMergePre s == mapMergePost s
 ------------------------------------------------------------------------------
 \end{code}
@@ -625,6 +629,9 @@ prop_expandExpand s = expandExpandPre s == expandExpandPost s
 1. `streamMerge [streamExpand s2, streamExpand s2]
     = streamExpand (streamMerge [s1,s2])`
 
+TODO not total, ordering not preserved (in some circumstances? when a stream
+terminates?) remove from this section
+
 \begin{code}
 ------------------------------------------------------------------------------
 expandMergePre s = streamMerge [streamExpand w1, streamExpand w2] where
@@ -637,6 +644,8 @@ expandMergePost s = streamExpand (streamMerge [w1,w2]) where
 
 -- expensive, passes
 pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
+-- or
+pxxp_expandMerge2 s = (expandMergePre s) == (expandMergePost s)
 ------------------------------------------------------------------------------
 \end{code}
 
@@ -645,12 +654,16 @@ pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
 [start=57]
 1. `streamFilter . streamMerge`
 
+TODO does not preserve order (remove from this section?)
+
 \begin{code}
 ------------------------------------------------------------------------------
 mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
 mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
 -- this is very slow to execute but passes
 pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
+-- fails due to reordering
+pxxp_mergeFilter2 s =  (mergeFilterPre s) ==  (mergeFilterPost s)
 ------------------------------------------------------------------------------
 \end{code}
 
@@ -682,6 +695,8 @@ pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 1. `streamExpand (streamMerge [s1,s2])
     = streamMerge [streamExpand s2, streamExpand s2]`
 
+TODO not total, reorders
+
 \begin{code}
 ------------------------------------------------------------------------------
 mergeExpandPre s = streamExpand (streamMerge [w1,w2]) where
@@ -695,6 +710,8 @@ mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
 -- *very* expensive to evaluate
 -- passes
 pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
+-- fails: reorders
+pxxp_mergeExpand2 s =  (mergeExpandPre s) ==  (mergeExpandPost s)
 ------------------------------------------------------------------------------
 \end{code}
 
