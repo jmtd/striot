@@ -461,7 +461,25 @@ prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 ------------------------------------------------------------------------------
 \end{code}
 
-// ?  31: streamJoin . streamScan
+// 31 31: streamJoin . streamScan
+
+TODO adapting from join . scan
+
+[start=31]
+1. `streamJoin . streamScan` (total?)
+
+\begin{code}
+------------------------------------------------------------------------------
+scanJoinPre     = streamJoin sA . streamScan counter 0
+-- the '?' here is a "doesn't matter, shouldn't be looked at" value
+-- although the type of the '?' has to match the type of sA
+scanJoinPost    = streamScan (\c (x,y) -> (x, counter (snd c) y)) ('?',0) . streamJoin sA
+prop_scanJoin  :: Stream Char -> Bool
+prop_scanJoin s = scanJoinPre s == scanJoinPost s
+------------------------------------------------------------------------------
+\end{code}
+
+
 // ?  32: streamMerge . streamScan
 // ?  33: streamFilter . streamWindow
 // ?  34: streamMap . streamWindow
