@@ -685,9 +685,9 @@ pxxp_mergeFilter2 s =  (mergeFilterPre s) ==  (mergeFilterPost s)
 mergeFilterPost2 s = streamMap fromJust
                    $ streamFilter isJust
                    $ streamMerge [
-                       streamMap (\v -> if f v then Just v else Nothing) sA,
-                       streamMap (\v -> if f v then Just v else Nothing) s
-                   ]
+                       streamMap ifJust sA,
+                       streamMap ifJust  s
+                   ] where ifJust f v = if f v then Just v else Nothing
 
 prop_mergeFilter s = mergeFilterPre s == mergeFilterPost2 s
 ------------------------------------------------------------------------------
