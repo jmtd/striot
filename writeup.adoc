@@ -23,6 +23,7 @@ import Data.Char (isAscii)
 import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
+import Data.Maybe
 
 \end{code}
 //////////////////////////////////////////////////////////////////////////////
@@ -244,6 +245,7 @@ only applies if we ignore Event metadata
 ------------------------------------------------------------------------------
 windowExpandPre n    = streamExpand . streamWindow (chop n)
 prop_windowExpand1  :: Stream Char -> Bool
+-- failing!
 prop_windowExpand1 s = (windowExpandPre 2) s == s
 
 -- works but expensive to evaluate
@@ -661,21 +663,33 @@ pxxp_expandMerge2 s = (expandMergePre s) == (expandMergePost s)
 ------------------------------------------------------------------------------
 \end{code}
 
-//  8 57: streamFilter . streamMerge
+// 57 57: streamFilter . streamMerge
 
 [start=57]
 1. `streamFilter . streamMerge`
 
-TODO does not preserve order (remove from this section?)
+Simply pushing the filters up to the streams that are the input to the merge
+will not preserve the precise order of events. This can be addressed with the
+additional Maybe wrapping and unwrapping as below
 
 \begin{code}
 ------------------------------------------------------------------------------
 mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
+-- this does not preserve order
 mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
 -- this is very slow to execute but passes
 pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 -- fails due to reordering
 pxxp_mergeFilter2 s =  (mergeFilterPre s) ==  (mergeFilterPost s)
+
+mergeFilterPost2 s = streamMap fromJust
+                   $ streamFilter isJust
+                   $ streamMerge [
+                       streamMap (\v -> if f v then Just v else Nothing) sA,
+                       streamMap (\v -> if f v then Just v else Nothing) s
+                   ]
+
+prop_mergeFilter s = mergeFilterPre s == mergeFilterPost2 s
 ------------------------------------------------------------------------------
 \end{code}
 
