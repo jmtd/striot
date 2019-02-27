@@ -316,6 +316,8 @@ This is not "total", because ordering is not preserved.
 
 TODO move out of this section?
 
+TODO could we use the Maybe trick?
+
 \begin{code}
 ------------------------------------------------------------------------------
 filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
@@ -323,6 +325,14 @@ filterMergePost s  = streamFilter f $ streamMerge [sA, s]
 -- this is very slow to execute but passes
 pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 pxxp_filterMerge2 s = filterMergePre s == filterMergePost s
+
+-- Nope!
+filterMergePost2 = mergeFilterPost2
+prop_filterMerge2 s = filterMergePre s == filterMergePost2 s
+-- 
+sX = [Event {eventId = -2, time = Nothing, value = Just 'L'},
+      Event {eventId = -2, time = Nothing, value = Just '\212'}]
+
 ------------------------------------------------------------------------------
 \end{code}
 
@@ -672,6 +682,9 @@ Simply pushing the filters up to the streams that are the input to the merge
 will not preserve the precise order of events. This can be addressed with the
 additional Maybe wrapping and unwrapping as below
 
+TODO can we use this Maybe trick for any of the other non-total cases around
+streamMerge?
+
 \begin{code}
 ------------------------------------------------------------------------------
 mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
@@ -685,8 +698,8 @@ pxxp_mergeFilter2 s =  (mergeFilterPre s) ==  (mergeFilterPost s)
 mergeFilterPost2 s = streamMap fromJust
                    $ streamFilter isJust
                    $ streamMerge [
-                       streamMap ifJust sA,
-                       streamMap ifJust  s
+                       streamMap (ifJust f) sA,
+                       streamMap (ifJust f)  s
                    ] where ifJust f v = if f v then Just v else Nothing
 
 prop_mergeFilter s = mergeFilterPre s == mergeFilterPost2 s
