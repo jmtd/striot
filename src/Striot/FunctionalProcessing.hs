@@ -171,12 +171,6 @@ streamScan _  _   []                       = []
 streamScan mf acc (Event eid t (Just v):r) = Event eid t (Just newacc):streamScan mf newacc r where newacc = mf acc v
 streamScan mf acc (Event eid t Nothing :r) = Event eid t Nothing      :streamScan mf acc    r -- allow events without data to pass through
 
-instance Arbitrary a => Arbitrary (Event a) where
-    arbitrary = do
-        eid <- arbitrary
-        i <- arbitrary
-        return $ Event eid Nothing (Just i)
-
 prop_streamScan_samelength :: Stream Int -> Bool
 prop_streamScan_samelength s = length s == length (streamScan (\_ x-> x) 0 s)
 

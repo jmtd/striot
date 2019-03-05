@@ -254,6 +254,13 @@ prop_windowExpand1 s = (windowExpandPre 2) s == s
 -- works but expensive to evaluate
 pxxp_windowExpand2 :: Int -> Stream Char -> Bool
 pxxp_windowExpand2 n s = (windowExpandPre n) s == s
+
+-- TODO: why does prop_windowExpand1 fail if pxxp_windowExpand2 does not?
+-- does pxxp_windowExpand2 2 fail? Can we write a generator that populates
+-- and checks the other Event fields, so that they all fail?
+--
+-- Perhaps these are behaving the way they are because our Arbitrary instance
+-- does generate a random ID field. The timestamp is fixed to Nothing still.
 ------------------------------------------------------------------------------
 \end{code}
 
