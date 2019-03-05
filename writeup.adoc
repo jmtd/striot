@@ -238,8 +238,11 @@ the return value! so we can't easily hide our work
 
 38. `streamExpand . streamWindow`
 
-TODO expand
-only applies if we ignore Event metadata
+In terms of the value payload of a stream, an expand immediately after a window
+can eliminate both operators. However, from the perspective of the Event type
+that wraps the payload, `streamWindow` is a destructive operation. The additional
+metadata in each Event is lost when multiple Events are aggregated into a newly
+constructed Event. Therefore, this rewrite is not Total.
 
 \begin{code}
 ------------------------------------------------------------------------------
