@@ -18,9 +18,9 @@ lhs = path
 -- RHS as a function
 -- in fact this encodes the whole thing: how to match and what rewrite to apply
 rhs :: StreamGraph -> StreamGraph
-rhs (Connect (Vertex (StreamVertex i Filter (f1:_) intype))
-             (Vertex (StreamVertex _ Filter (f2:_) _))) =
-    Vertex $ StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype
+rhs (Connect (Vertex (StreamVertex i Filter (f1:_) intype _))
+             (Vertex (StreamVertex _ Filter (f2:_) _ _))) =
+    Vertex $ StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype intype
 -- perhaps, we could use pattern matching to both check *and* apply rewrites,
 -- with a catch-all pattern for "no match, no op"
 rhs g = g
@@ -54,19 +54,19 @@ ppp = foldg "()" (show) (wrap " + ") (wrap " * ")
 -- in the graph? subgraph of size 2 that is
 
 -- attempt to make defining these more compact
-sv a b c d = Vertex (StreamVertex a b c d)
+sv a b c d e = Vertex (StreamVertex a b c d e)
 
 -- some more encoded rules
 -- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
 mapFilter :: StreamGraph -> StreamGraph
-mapFilter (Connect mapv@(Vertex (StreamVertex i Map (f:fs) intype))
-                   (Vertex (StreamVertex j Filter (p:ps) _)))
-    = sv j Filter (("("++p++").("++f++")"):ps) intype `Connect` mapv
+mapFilter (Connect mapv@(Vertex (StreamVertex i Map (f:fs) intype _))
+                   (Vertex (StreamVertex j Filter (p:ps) _ _)))
+    = sv j Filter (("("++p++").("++f++")"):ps) intype intype `Connect` mapv
 mapFilter g = g
 
-mapFilterEx = (sv 0 Map ["f"] "Int") `Connect` (sv 1 Filter ["p"] "String")
-mapFilterEx2 = (sv 0 Map ["show"] "Int") `Connect`
-                       (sv 1 Filter ["\\x -> length x <3"] "String")
+mapFilterEx = (sv 0 Map ["f"] "Int" "String") `Connect` (sv 1 Filter ["p"] "String" "String")
+mapFilterEx2 = (sv 0 Map ["show"] "Int" "String") `Connect`
+                       (sv 1 Filter ["\\x -> length x <3"] "String" "String")
 
 -- adjusted structure to see if we can thwart pattern matching
 mapFilterEx3 = empty `overlay` mapFilterEx2
@@ -76,8 +76,8 @@ test_simplify_ex3        = assertNotEqual mapFilterEx3 (mapFilter (simplify mapF
 
 -- the above would not be thwarted if the function was applied to all subgraphs,
 -- but would be by this version…
-mapFilterEx4 = (sv 0 Map ["show"] "Int") `Connect`
-                       (empty `Overlay` sv 1 Filter ["\\x -> length x <3"] "String")
+mapFilterEx4 = (sv 0 Map ["show"] "Int" "String") `Connect`
+                       (empty `Overlay` sv 1 Filter ["\\x -> length x <3"] "String" "String")
 
 test_ex2_4_equiv         = assertEqual mapFilterEx2 mapFilterEx4
 test_mapfilter_fails_ex4 = assertEqual mapFilterEx4 (mapFilter mapFilterEx4)
@@ -104,9 +104,9 @@ test_apply_works = assertEqual (mapFilter mapFilterEx)
 -- a 3-node example. mapFilter should apply to this; rhs should apply to the
 -- output
 mapFilterEx5 = path
-    [ StreamVertex 0 Filter ["p1"] "Int"
-    , StreamVertex 1 Map ["f"] "Int"
-    , StreamVertex 2 Filter ["p2"] "String"
+    [ StreamVertex 0 Filter ["p1"] "Int" "Int"
+    , StreamVertex 1 Map ["f"] "Int" "String"
+    , StreamVertex 2 Filter ["p2"] "String" "String"
     ]
 
 test_apply_deeper = assertNotEqual mapFilterEx5 (apply mapFilter mapFilterEx5)
@@ -128,10 +128,10 @@ data ReWriteOp = ReplaceNode StreamVertex StreamVertex
 
 -- streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)
 rhs2 :: StreamGraph -> [ReWriteOp]
-rhs2 (Connect (Vertex a@(StreamVertex i Filter (f1:_) intype))
-             (Vertex b@(StreamVertex _ Filter (f2:_) _))) =
+rhs2 (Connect (Vertex a@(StreamVertex i Filter (f1:_) intype _))
+             (Vertex b@(StreamVertex _ Filter (f2:_) _ _))) =
 
-    let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype
+    let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] intype intype
     in  [ ReplaceNode b c
         , MergeNode a c
         ]
@@ -139,9 +139,9 @@ rhs2 g = []
 
 -- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
 mapFilter2 :: StreamGraph -> [ReWriteOp]
-mapFilter2 (Connect (Vertex m@(StreamVertex i Map (f:fs) intype))
-                   (Vertex f1@(StreamVertex j Filter (p:ps) _))) =
-    let f2 = StreamVertex j Filter (("("++p++").("++f++")"):ps) intype
+mapFilter2 (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
+                   (Vertex f1@(StreamVertex j Filter (p:ps) _ _))) =
+    let f2 = StreamVertex j Filter (("("++p++").("++f++")"):ps) intype intype
     in  [ ReplaceNode m f2
         , ReplaceNode f1 m
         ]
@@ -155,11 +155,11 @@ doIt g ((DeleteNode v):rs) = doIt (removeVertex v g) rs
 
 -- test something? about doIt mapFilterEx (mapFilter2 mapFilterEx)
 
-m1 = Vertex $ StreamVertex 0 Map ["show"] "Int"
-f1 = Vertex $ StreamVertex 1 Filter ["\\x -> length x <3"] "String"
+m1 = Vertex $ StreamVertex 0 Map ["show"] "Int" "String"
+f1 = Vertex $ StreamVertex 1 Filter ["\\x -> length x <3"] "String" "String"
 
-m2 = Vertex $ StreamVertex 0 Map ["show"] "Int"
-f2 = Vertex $ StreamVertex 1 Filter ["(\\x -> length x <3).(show)"] "Int"
+m2 = Vertex $ StreamVertex 0 Map ["show"] "Int" "String"
+f2 = Vertex $ StreamVertex 1 Filter ["(\\x -> length x <3).(show)"] "Int" "Int"
 
 mapFilterEx6 = m1 `Connect` f1
 correct = f2 `Connect` m2
