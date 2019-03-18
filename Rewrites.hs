@@ -27,22 +27,32 @@ data ReWriteOp = ReplaceNode StreamVertex StreamVertex
                | DeleteNode  StreamVertex
                deriving (Show,Eq)
 
--- XXX needs reworking for (StreamGraph -> [ReWriteOp])
--- XXX rename
-apply :: (StreamGraph -> StreamGraph) -> StreamGraph -> StreamGraph
-apply f Empty = Empty
-apply f (Vertex v) = Vertex v
-apply f g@(Overlay x y) = if   g == f g
-                          then Overlay (f x) (f y)
-                          else g
-apply f g@(Connect x y) = f g
+applyRewriteOps :: StreamGraph -> [ReWriteOp] -> StreamGraph
+applyRewriteOps g [] = g
+applyRewriteOps g ((ReplaceNode old new):rs) = applyRewriteOps (replaceVertex old new g) rs
+applyRewriteOps g ((MergeNode l r):rs) = applyRewriteOps (mergeVertices (\v->v`elem`[l,r]) r g) rs
+applyRewriteOps g ((DeleteNode v):rs) = applyRewriteOps (removeVertex v g) rs
 
--- XXX rename
-doIt :: StreamGraph -> [ReWriteOp] -> StreamGraph
-doIt g [] = g
-doIt g ((ReplaceNode old new):rs) = doIt (replaceVertex old new g) rs
-doIt g ((MergeNode l r):rs) = doIt (mergeVertices (\v->v`elem`[l,r]) r g) rs
-doIt g ((DeleteNode v):rs) = doIt (removeVertex v g) rs
+type RewriteRule = StreamGraph -> [ReWriteOp]
+
+applyRule :: RewriteRule -> StreamGraph -> StreamGraph
+applyRule f g =
+    let ops = renameMe f g in
+    case ops of
+        Nothing   -> g
+        Just ops' -> applyRewriteOps g ops'
+
+-- need to recursively attempt to apply the rule to the graph, but stop
+-- as soon as we get a match
+renameMe :: RewriteRule -> StreamGraph -> Maybe [ReWriteOp]
+renameMe f g = let r = f g in
+    case r of
+        [] -> case g of
+            Empty       -> Nothing
+            Vertex v    -> Nothing
+            Overlay a b -> if renameMe f a /= Nothing then renameMe f a else renameMe f b
+            Connect a b -> if renameMe f a /= Nothing then renameMe f a else renameMe f b
+        otherwise -> Just r
 
 -- example encoded rules -----------------------------------------------------
 
@@ -66,10 +76,7 @@ mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
         ]
 mapFilter g = []
 
-
 -- tests ---------------------------------------------------------------------
-
--- (need to revamp these entirely)
 
 m1 = Vertex $ StreamVertex 0 Map ["show"] "Int" "String"
 f1 = Vertex $ StreamVertex 1 Filter ["\\x -> length x <3"] "String" "String"
@@ -77,7 +84,11 @@ f1 = Vertex $ StreamVertex 1 Filter ["\\x -> length x <3"] "String" "String"
 m2 = Vertex $ StreamVertex 0 Map ["show"] "Int" "String"
 f2 = Vertex $ StreamVertex 1 Filter ["(\\x -> length x <3).(show)"] "Int" "Int"
 
-mapFilterEx6 = m1 `Connect` f1
-correct = f2 `Connect` m2
+mapFilterPre = m1 `Connect` f1
+mapFilterPost = f2 `Connect` m2
 
-test_foo = assertEqual correct (doIt mapFilterEx6 (mapFilter mapFilterEx6))
+test_mapfilter1 = assertEqual mapFilterPost
+    $ applyRewriteOps mapFilterPre (mapFilter mapFilterPre)
+
+test_mapfilter2 = assertEqual mapFilterPost
+    $ applyRule mapFilter mapFilterPre
