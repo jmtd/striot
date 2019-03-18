@@ -92,3 +92,13 @@ test_mapfilter1 = assertEqual mapFilterPost
 
 test_mapfilter2 = assertEqual mapFilterPost
     $ applyRule mapFilter mapFilterPre
+
+-- test it finds matches in sub-graphs
+mapFilterSub = mapFilterPre `Overlay` Empty
+test_mapfilter3 = assertEqual mapFilterPost
+    $ applyRule mapFilter mapFilterSub
+
+-- deeper sub-graphs and some redundancy
+mapFilterSub2 = Empty `Overlay` Empty `Overlay` mapFilterPre `Overlay` mapFilterPre
+test_mapfilter4 = assertEqual mapFilterPost
+    $ applyRule mapFilter mapFilterSub2
