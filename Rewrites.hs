@@ -22,59 +22,51 @@ main = htfMain htf_Main_thisModulesTests
 
 -- applying encoded rules and their resulting ReWriteOps ----------------------
 
-data ReWriteOp = ReplaceNode StreamVertex StreamVertex
-               | MergeNode   StreamVertex StreamVertex
-               | DeleteNode  StreamVertex
-               deriving (Show,Eq)
-
-applyRewriteOps :: StreamGraph -> [ReWriteOp] -> StreamGraph
-applyRewriteOps g [] = g
-applyRewriteOps g ((ReplaceNode old new):rs) = applyRewriteOps (replaceVertex old new g) rs
-applyRewriteOps g ((MergeNode l r):rs) = applyRewriteOps (mergeVertices (\v->v`elem`[l,r]) r g) rs
-applyRewriteOps g ((DeleteNode v):rs) = applyRewriteOps (removeVertex v g) rs
-
-type RewriteRule = StreamGraph -> [ReWriteOp]
+type RewriteRule = StreamGraph -> Maybe (StreamGraph -> StreamGraph)
 
 applyRule :: RewriteRule -> StreamGraph -> StreamGraph
 applyRule f g =
     let ops = firstMatch f g in
     case ops of
-        Nothing   -> g
-        Just ops' -> applyRewriteOps g ops'
+        Nothing -> g
+        Just f  -> f g
 
 -- recursively attempt to apply the rule to the graph, but stop
 -- as soon as we get a match
-firstMatch :: RewriteRule -> StreamGraph -> Maybe [ReWriteOp]
+firstMatch :: RewriteRule -> StreamGraph -> Maybe (StreamGraph -> StreamGraph)
 firstMatch f g = let r = f g in
     case r of
-        [] -> case g of
+        Just f    -> Just f
+        otherwise -> case g of
             Empty       -> Nothing
             Vertex v    -> Nothing
-            Overlay a b -> if firstMatch f a /= Nothing then firstMatch f a else firstMatch f b
-            Connect a b -> if firstMatch f a /= Nothing then firstMatch f a else firstMatch f b
-        otherwise -> Just r
+            Overlay a b -> case firstMatch f a of
+                                Just f  -> Just f
+                                Nothing -> firstMatch f b
+            Connect a b -> case firstMatch f a of
+                                Just f  -> Just f
+                                Nothing -> firstMatch f b
 
 -- example encoded rules -----------------------------------------------------
 
 -- streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)
-filterFuse :: StreamGraph -> [ReWriteOp]
+filterFuse :: RewriteRule
 filterFuse (Connect (Vertex a@(StreamVertex i Filter (f1:_) ty _))
                     (Vertex b@(StreamVertex _ Filter (f2:_) _ _))) =
 
     let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] ty ty
-    in  [ ReplaceNode b c
-        , MergeNode a c ]
-filterFuse g = []
+    in  Just $ \g ->
+          (mergeVertices (\v->v`elem`[a,c]) c (replaceVertex b c g))
+
+filterFuse g = Nothing
 
 -- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
-mapFilter :: StreamGraph -> [ReWriteOp]
+mapFilter :: RewriteRule
 mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
                    (Vertex f1@(StreamVertex j Filter (p:ps) _ _))) =
     let f2 = StreamVertex j Filter (("("++p++").("++f++")"):ps) intype intype
-    in  [ ReplaceNode m f2
-        , ReplaceNode f1 m
-        ]
-mapFilter g = []
+    in Just $ \g -> replaceVertex f1 m (replaceVertex m f2 g)
+mapFilter g = Nothing
 
 -- tests ---------------------------------------------------------------------
 
@@ -86,9 +78,6 @@ f2 = Vertex $ StreamVertex 1 Filter ["(\\x -> length x <3).(show)"] "Int" "Int"
 
 mapFilterPre = m1 `Connect` f1
 mapFilterPost = f2 `Connect` m2
-
-test_mapfilter1 = assertEqual mapFilterPost
-    $ applyRewriteOps mapFilterPre (mapFilter mapFilterPre)
 
 test_mapfilter2 = assertEqual mapFilterPost
     $ applyRule mapFilter mapFilterPre
