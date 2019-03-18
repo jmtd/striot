@@ -37,21 +37,21 @@ type RewriteRule = StreamGraph -> [ReWriteOp]
 
 applyRule :: RewriteRule -> StreamGraph -> StreamGraph
 applyRule f g =
-    let ops = renameMe f g in
+    let ops = firstMatch f g in
     case ops of
         Nothing   -> g
         Just ops' -> applyRewriteOps g ops'
 
--- need to recursively attempt to apply the rule to the graph, but stop
+-- recursively attempt to apply the rule to the graph, but stop
 -- as soon as we get a match
-renameMe :: RewriteRule -> StreamGraph -> Maybe [ReWriteOp]
-renameMe f g = let r = f g in
+firstMatch :: RewriteRule -> StreamGraph -> Maybe [ReWriteOp]
+firstMatch f g = let r = f g in
     case r of
         [] -> case g of
             Empty       -> Nothing
             Vertex v    -> Nothing
-            Overlay a b -> if renameMe f a /= Nothing then renameMe f a else renameMe f b
-            Connect a b -> if renameMe f a /= Nothing then renameMe f a else renameMe f b
+            Overlay a b -> if firstMatch f a /= Nothing then firstMatch f a else firstMatch f b
+            Connect a b -> if firstMatch f a /= Nothing then firstMatch f a else firstMatch f b
         otherwise -> Just r
 
 -- example encoded rules -----------------------------------------------------
