@@ -58,7 +58,7 @@ any rights for adaptation or redistribution.
 >                return op} 
 
 > symbolic = (`elem` opsymbols)
-> opsymbols = "!@#$%&*+./<=>?\\^|:-~"
+> opsymbols = "!@#$%&*+./<=>?\\^|:-~,"
 
 > instance Show Expr where
 >  showsPrec p (Compose [])  = showString "id"

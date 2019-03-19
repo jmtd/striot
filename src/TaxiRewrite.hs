@@ -16,7 +16,6 @@ import Data.List (permutations,nub)
 filterFuseHelper f g x = f x && g x
 fusedAcc  accfn1 accfn2 pred1         (x,y) v = (accfn1 x v, if pred1 v x then accfn2 y v else y)
 fusedPred               pred1 pred2   x (y,z) = pred1 x y && pred2 x z
-comma = (,)
 fAcc  p f  = \a v -> if p v then f a v else a
 fPred p q  = \v a -> p v && q v a
 fPred2 p q = \v a -> p v a && q v
@@ -41,7 +40,7 @@ mylaws = map (parse law)
 
  , "defn filterAccfilterAcc: \
 \   streamFilterAcc f2 a2 p2 . streamFilterAcc f1 a1 p1\
-\   = streamFilterAcc (fusedAcc f1 f2 p1) (comma a1 a2) (fusedPred p1 p2)"
+\   = streamFilterAcc (fusedAcc f1 f2 p1) (a1 , a2) (fusedPred p1 p2)"
 
  , "defn FilterAccMap: streamFilterAcc f2 a p . streamMap f = streamMap f . streamFilterAcc f2 a (p . f)"
  ]
@@ -60,3 +59,7 @@ onePerm  = calculate mylaws taxiQ1
 allPerms = nub
          $ map (\laws -> calculate laws taxiQ1)
            (permutations mylaws)
+
+testFilterAccFuse = parse expr "streamFilterAcc f2 a2 p2 . streamFilterAcc f1 a1 p1"
+testFilterAccFuse'= calculate mylaws stupid
+
