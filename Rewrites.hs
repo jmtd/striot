@@ -91,3 +91,13 @@ test_mapfilter3 = assertEqual mapFilterPost
 mapFilterSub2 = Empty `Overlay` Empty `Overlay` mapFilterPre `Overlay` mapFilterPre
 test_mapfilter4 = assertEqual mapFilterPost
     $ applyRule mapFilter mapFilterSub2
+
+f3 = Vertex $ StreamVertex 0 Filter ["(>3)"] "String" "String"
+f4 = Vertex $ StreamVertex 1 Filter ["(<5)"] "String" "String"
+filterFusePre = Connect f3 f4
+filterFusePost = Vertex $ StreamVertex 0 Filter
+    ["\\f g x -> f x && g x","(>3)","(<5)"] "String" "String"
+
+-- failing . the pattern mtach is working, the replaceVertex is owrking, but the 
+-- mergeVertices is not.
+test_filterFuse = assertEqual filterFusePost (applyRule filterFuse filterFusePre)
