@@ -51,11 +51,11 @@ firstMatch f g = let r = f g in
 
 -- streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)
 filterFuse :: RewriteRule
-filterFuse (Connect (Vertex a@(StreamVertex i Filter (f1:_) ty _))
-                    (Vertex b@(StreamVertex _ Filter (f2:_) _ _))) =
+filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:_) ty _))
+                    (Vertex b@(StreamVertex _ Filter (q:_) _ _))) =
 
-    let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2] ty ty
-    in Just (\g -> removeEdge c c (mergeVertices (\v->v`elem`[a,b]) c g))
+    let c = StreamVertex i Filter ["\\p q x -> p x && q x", p, q] ty ty
+    in  Just (removeEdge c c . mergeVertices (`elem` [a,b]) c)
 
 filterFuse _ = Nothing
 
@@ -63,8 +63,10 @@ filterFuse _ = Nothing
 mapFilter :: RewriteRule
 mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
                    (Vertex f1@(StreamVertex j Filter (p:ps) _ _))) =
+
     let f2 = StreamVertex j Filter (("("++p++").("++f++")"):ps) intype intype
-    in Just $ \g -> replaceVertex f1 m (replaceVertex m f2 g)
+    in  Just (replaceVertex f1 m . replaceVertex m f2)
+
 mapFilter _ = Nothing
 
 -- tests ---------------------------------------------------------------------
@@ -95,7 +97,7 @@ f3 = Vertex $ StreamVertex 0 Filter ["(>3)"] "String" "String"
 f4 = Vertex $ StreamVertex 1 Filter ["(<5)"] "String" "String"
 filterFusePre = Connect f3 f4
 filterFusePost = Vertex $ StreamVertex 0 Filter
-    ["\\f g x -> f x && g x","(>3)","(<5)"] "String" "String"
+    ["\\p q x -> p x && q x","(>3)","(<5)"] "String" "String"
 
 test_filterFuse = assertEqual (simplify $ applyRule filterFuse filterFusePre)
     filterFusePost
