@@ -57,7 +57,7 @@ filterFuse (Connect (Vertex a@(StreamVertex i Filter (f1:_) ty _))
     let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2] ty ty
     in Just (\g -> removeEdge c c (mergeVertices (\v->v`elem`[a,b]) c g))
 
-filterFuse g = Nothing
+filterFuse _ = Nothing
 
 -- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
 mapFilter :: RewriteRule
@@ -65,7 +65,7 @@ mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
                    (Vertex f1@(StreamVertex j Filter (p:ps) _ _))) =
     let f2 = StreamVertex j Filter (("("++p++").("++f++")"):ps) intype intype
     in Just $ \g -> replaceVertex f1 m (replaceVertex m f2 g)
-mapFilter g = Nothing
+mapFilter _ = Nothing
 
 -- tests ---------------------------------------------------------------------
 
