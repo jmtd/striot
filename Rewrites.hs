@@ -54,9 +54,8 @@ filterFuse :: RewriteRule
 filterFuse (Connect (Vertex a@(StreamVertex i Filter (f1:_) ty _))
                     (Vertex b@(StreamVertex _ Filter (f2:_) _ _))) =
 
-    let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2, "s"] ty ty
-    in  Just $ \g ->
-          (mergeVertices (\v->v`elem`[a,c]) c (replaceVertex b c g))
+    let c = StreamVertex i Filter ["\\f g x -> f x && g x", f1, f2] ty ty
+    in Just (\g -> removeEdge c c (mergeVertices (\v->v`elem`[a,b]) c g))
 
 filterFuse g = Nothing
 
@@ -98,6 +97,5 @@ filterFusePre = Connect f3 f4
 filterFusePost = Vertex $ StreamVertex 0 Filter
     ["\\f g x -> f x && g x","(>3)","(<5)"] "String" "String"
 
--- failing . the pattern mtach is working, the replaceVertex is owrking, but the 
--- mergeVertices is not.
-test_filterFuse = assertEqual filterFusePost (applyRule filterFuse filterFusePre)
+test_filterFuse = assertEqual (simplify $ applyRule filterFuse filterFusePre)
+    filterFusePost
