@@ -5,6 +5,8 @@ import Test.Framework hiding ((===))
 
 import TaxiGraph -- symlink to examples/taxi/generate.hs, provides taxiQ1
 
+import VizGraph
+
 -- attempt to encode a graph transformation!
 
 -- utility/boilerplate -------------------------------------------------------
