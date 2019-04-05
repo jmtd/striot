@@ -3,6 +3,8 @@ import Striot.CompileIoT
 import Algebra.Graph
 import Test.Framework hiding ((===))
 
+import TaxiGraph -- symlink to examples/taxi/generate.hs, provides taxiQ1
+
 -- attempt to encode a graph transformation!
 
 -- utility/boilerplate -------------------------------------------------------

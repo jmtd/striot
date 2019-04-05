@@ -2,6 +2,8 @@
     generate.hs for Taxi Q1
 -}
 
+module TaxiGraph (taxiQ1) where
+
 import Striot.CompileIoT
 import Algebra.Graph
 import System.FilePath --(</>)
