@@ -15,9 +15,6 @@ ppp = foldg "()" (show) (wrap " + ") (wrap " * ")
     where wrap x y z = y ++ x ++ z
           bracket x = "("++x++")"
 
--- attempt to make defining these more compact
-sv a b c d e = Vertex (StreamVertex a b c d e)
-
 main = htfMain htf_Main_thisModulesTests
 
 -- applying encoded rules and their resulting ReWriteOps ----------------------
