@@ -100,5 +100,5 @@ filterFusePre = Connect f3 f4
 filterFusePost = Vertex $ StreamVertex 0 Filter
     ["\\p q x -> p x && q x","(>3)","(<5)"] "String" "String"
 
-test_filterFuse = assertEqual (simplify $ applyRule filterFuse filterFusePre)
+test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
     filterFusePost
