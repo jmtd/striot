@@ -30,26 +30,29 @@ import Data.Maybe
 
 == Abstract
 
-We describe STRIoT: a stream-processing system built around pure
-functional programming principles. STRIoT supports the composition of a
-stream processing pipeline from eight purely functional operators. The
-STRIoT system is designed to rewrite the supplied stream pipeline in
-order to optimize its operation against a set of functional and
-non-functional requirements. We compile a list of rewrite rules based on
-a systematic pairwise comparison of the functional operators. We
-classify each rule as total if it can be applied in any circumstance, or
-partial if there are requirements on the input stream not expressed by
-the type of the stream, and quantify those requirements.
+STRIoT (a stream-processing system) supports the composition of a
+stream-processing definition from eight purely functional operators. The STRIoT
+system is designed to rewrite the supplied stream-processing definition (a
+program) in order to optimize its operation with respect to a set of
+non-functional requirements.
+
+We performed a systematic pairwise comparison of the functional operators in
+order to derive a list of rewrite rules that could be used in the STRIoT
+system.
+
+This paper collects the rules from this process as well as lessons learned
+from analysing the semantics of the operators.
 
 == Background
 
-description of striot
-selection of operators
+ * description of striot
+ * selection of operators
 
-A *Stream* is a list of *Event*s. An *Event* has an Id field and might include an
+// XXX move elsewhere
+A *Stream* is a list of *Event* s. An *Event* has an Id field and might include an
 iota of data, (a datum?) and a timestamp.
 
-<table of operators>
+=== table of operators
 
     streamFilter    :: (a -> Bool) -> Stream a -> Stream a
     streamMap       :: (a -> b) -> Stream a -> Stream b
@@ -60,9 +63,9 @@ iota of data, (a datum?) and a timestamp.
     streamMerge     :: [Stream a] -> Stream a
     streamJoin      :: Stream a -> Stream b -> Stream (a,b)
 
-Ignoring the stream-in, stream-out parameters, the first four operators are
-unary and their functional parameter operates on the payload of the stream,
-and not the stream itself (the types of the HoFs do not include Stream)
+Ignoring the Stream-in, Stream-out parameters, the first four operators are
+unary and their parameter operates on the payload of the Stream,
+and not the Stream type itself.
 
 The second set of four operators operate directly on Streams.
 
@@ -80,7 +83,9 @@ eliminate them.
 This method sometimes yielded a result that turned out not to behave
 identically to the original pair in some or all circumstances. If we
 thought the rewrite could still be useful in practise, we recorded it
-with the appropriate annotation.
+with the appropriate annotation. Such rules we consider "partial", in
+contrast to the regular, functional-behaviour-preserving rules which
+are "total".
 
 Once we had determined a viable rewrite rule, we examined whether its
 inverse was a second, distinct viable rule.
@@ -107,7 +112,7 @@ into it, we lose the information contained therein, including the timestamp
 field.
 
 The type of `streamMerge` indicates that it could manipulate the input
-*Event*s, but we know in practise that it doesn't.
+*Event*s, but we know in practice that it doesn't.
 
 === Tools
 
@@ -127,8 +132,6 @@ also helped to catch a few cases where we had authored a rewrite rule we
 thought was total, but wasn't. We then explored the failure cases to
 determine whether the rule needed to be thrown out, or was useful in
 some circumstances, in which case we noted the necessary caveats.
-
-TODO "total" mentioned in the para above; but defined below
 
 In order for QuickCheck to generate random Stream data, we were required
 to provide a trivial implementation of the Arbitrary class for the
@@ -173,6 +176,8 @@ supplied arguments, such as the predicate supplied to streamFilter.
 === Combinations that yield no rules
 
 TODO explanations for why the combinations are ruled out where possible
+
+TODO move the list of rules to an appendix?
 
 // format of rules in comments
 //  X  Y: operator2 . operator1
@@ -789,6 +794,14 @@ be caught just through the systematic approach)
 
 It appears to not be possible to perform the same promotion/fusion trick
 with streamScan as streamFilterAcc (TODO: Why?)
+
+Some rules appear to have merit for stream optimisation on their own
+without considering the wider context of a stream processing graph:
+e.g. filter fusion, matching a class of optimisation from the IBM paper,
+and intuitively an improvement to a stream processing program (better
+time/space complexity)
+
+Others do not.
 
 === join
 
