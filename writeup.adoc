@@ -177,8 +177,6 @@ supplied arguments, such as the predicate supplied to streamFilter.
 
 TODO explanations for why the combinations are ruled out where possible
 
-TODO move the list of rules to an appendix?
-
 // format of rules in comments
 //  X  Y: operator2 . operator1
 // where X is the reference into the grid for the rule (or no rule, e.g. X1)
@@ -288,7 +286,68 @@ pxxp_windowExpand2 n s = (windowExpandPre n) s == s
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-=== Rewrites
+=== Summary
+
+23 rules
+
+TODO any inversions? with or without caveats? (without caveats would probably
+be caught just through the systematic approach)
+
+?? adding partial rules that do not preserve re-ordering
+
+It appears to not be possible to perform the same promotion/fusion trick
+with streamScan as streamFilterAcc (TODO: Why?)
+
+Some rules appear to have merit for stream optimisation on their own
+without considering the wider context of a stream processing graph:
+e.g. filter fusion, matching a class of optimisation from the IBM paper,
+and intuitively an improvement to a stream processing program (better
+time/space complexity)
+
+Others do not.
+
+=== join
+
+For pairs where the first operator is join, we know that the second
+must operate on a tuple. However we cannot use this information to
+decompose the arguments to higher order functions (filter or map), so in
+general it seems no useful rewrites exist for this category of pairs.
+
+== Conclusion
+
+There are 64 pairings of 8 functional operators. Systematically looking
+for ways to rewrite each pair whilst preserving the functional
+definition yielded up to 27 rewrite rules: 12 rules classified as
+applicable in any circumstance (total), a further 7 with caveats
+discovered by testing for inversions of the first 12, and a further
+8 partial rules that apply if certain external properties of the stream
+apply (such as, strict order not being important)
+
+These rules may prove useful as a base set of possible rewrites that
+could be applied to a stream processing graph in order to change and/or
+optimise the non-functional behaviour of the graph.
+
+Examination of the rules, in particular the partial rules, has revealed
+some properties of the graphs that, if encoded and provided to a rewrite
+system, could aid in making more effective rewriting decisions. For
+example if strict ordering of stream events is not important, then a
+further 6 rewrite rules could be applied.
+
+=== Further work
+
+ * looking at triples or other combinations of operators
+ * factoring in consideration of partitions
+ * selection and encoding of additional information about streams for
+   rewrite purposes
+
+[bibliography]
+== References
+
+- [[[QuickCheck]]]
+- [[[HTF]]]
+
+[appendix]
+== Rewrite rules
 
 1. `streamFilter . streamFilter` fusion
    (total)
@@ -783,65 +842,7 @@ pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 ------------------------------------------------------------------------------
 \end{code}
 
-=== Summary
 
-23 rules
-
-TODO any inversions? with or without caveats? (without caveats would probably
-be caught just through the systematic approach)
-
-?? adding partial rules that do not preserve re-ordering
-
-It appears to not be possible to perform the same promotion/fusion trick
-with streamScan as streamFilterAcc (TODO: Why?)
-
-Some rules appear to have merit for stream optimisation on their own
-without considering the wider context of a stream processing graph:
-e.g. filter fusion, matching a class of optimisation from the IBM paper,
-and intuitively an improvement to a stream processing program (better
-time/space complexity)
-
-Others do not.
-
-=== join
-
-For pairs where the first operator is join, we know that the second
-must operate on a tuple. However we cannot use this information to
-decompose the arguments to higher order functions (filter or map), so in
-general it seems no useful rewrites exist for this category of pairs.
-
-== Conclusion
-
-There are 64 pairings of 8 functional operators. Systematically looking
-for ways to rewrite each pair whilst preserving the functional
-definition yielded up to 27 rewrite rules: 12 rules classified as
-applicable in any circumstance (total), a further 7 with caveats
-discovered by testing for inversions of the first 12, and a further
-8 partial rules that apply if certain external properties of the stream
-apply (such as, strict order not being important)
-
-These rules may prove useful as a base set of possible rewrites that
-could be applied to a stream processing graph in order to change and/or
-optimise the non-functional behaviour of the graph.
-
-Examination of the rules, in particular the partial rules, has revealed
-some properties of the graphs that, if encoded and provided to a rewrite
-system, could aid in making more effective rewriting decisions. For
-example if strict ordering of stream events is not important, then a
-further 6 rewrite rules could be applied.
-
-=== Further work
-
- * looking at triples or other combinations of operators
- * factoring in consideration of partitions
- * selection and encoding of additional information about streams for
-   rewrite purposes
-
-[bibliography]
-== References
-
-- [[[QuickCheck]]]
-- [[[HTF]]]
 
 //////////////////////////////////////////////////////////////////////////////
 // Utility Haskell code, required by the inline examples
