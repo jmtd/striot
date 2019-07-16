@@ -102,3 +102,8 @@ filterFusePost = Vertex $ StreamVertex 0 Filter
 
 test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
     filterFusePost
+
+display1 = displayGraph $ taxiQ1
+display2 = displayGraph $ applyRule filterFuse taxiQ1
+display3 = displayGraph $ applyRule mapFilter $ applyRule filterFuse taxiQ1
+
