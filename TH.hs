@@ -36,6 +36,7 @@ findMap' exp = case exp of
 
         LamE [p] e -> findMap' e -- XXX no need to look at the patterns?
 
+        CondE a b c -> findMap' a || findMap' b || findMap' c
         _        -> False
 
 
@@ -44,7 +45,10 @@ test_blah2 = assertBool =<< findMap [| streamMap (+1) (streamMap (*2) streamSrc)
 test_blah3 = assertBool =<< findMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
 test_blah4 = assertBool =<< findMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
 
-test_blahL = assertBool =<< findMap [| \e -> streamMap (+1) e |]
+test_lambda= assertBool =<< findMap [| \e -> streamMap (+1) e |]
+
+test_cond  = assertBool =<< findMap [| if True then streamMap (+1) else streamfilter (<1) |]
+
 
 ------------------------------------------------------------------------------
 -- splicing
