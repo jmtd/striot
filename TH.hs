@@ -37,6 +37,8 @@ findMap' exp = case exp of
         LamE [p] e -> findMap' e -- XXX no need to look at the patterns?
         CondE a b c -> findMap' a || findMap' b || findMap' c
         TupE xs  -> or $ map findMap' xs
+
+        LetE decs e -> findMap' e
         _        -> False
 
 
@@ -50,6 +52,10 @@ test_lambda= assertBool =<< findMap [| \e -> streamMap (+1) e |]
 test_cond  = assertBool =<< findMap [| if True then streamMap (+1) else streamfilter (<1) |]
 
 test_tuple = assertBool =<< findMap [| (streamMap, streamFilter) |]
+
+test_let   = assertBool =<< findMap [| let f = streamSrc in streamMap (+1) f |]
+-- demonstrates we need to handle Dec
+--test_let2  = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
 
 ------------------------------------------------------------------------------
 -- splicing
