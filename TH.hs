@@ -48,3 +48,10 @@ streamSrc = map (\n -> (Event 0 Nothing (Just n))) [1,2,4,5]
 blah :: Quasi m => m Bool
 blah = runQ [| streamMap (+1) streamSrc |] >>= findMap'' -- True
 
+blah' = findMap [| streamMap (+1) streamSrc |] :: IO Bool
+
+test_blah = blah >>= assertBool
+test_blah' = blah' >>= assertBool
+test_blah'' = findMap [| streamMap (+1) streamSrc |] >>= assertBool
+
+main = htfMain htf_thisModulesTests
