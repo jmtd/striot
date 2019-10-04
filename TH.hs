@@ -1,10 +1,6 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- not sure necessary
-{- LANGUAGE DeriveLift -}
-{- LANGUAGE OverloadedStrings -}
-
 import Striot.FunctionalProcessing
 import Striot.FunctionalIoTtypes
 import Language.Haskell.TH
