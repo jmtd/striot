@@ -20,6 +20,9 @@ streamSrc = map (\n -> (Event 0 Nothing (Just n))) [1,2,4,5]
 -- e.g. findMap [| streamMap (+3) |]
 findMap expq = runQ expq >>= return . findMap'
 
+-- XXX I wonder if there's a smarter way to traverse the Exp structure than
+-- pattern matching like this (something like generic traversal from that
+--  paper)
 findMap' exp = case exp of
         ListE [] -> False
         ListE xs -> or $ map findMap' xs 
@@ -31,6 +34,8 @@ findMap' exp = case exp of
         InfixE (Just a) b Nothing  -> findMap' a || findMap' b
         InfixE Nothing  b Nothing  -> findMap' b
 
+        LamE [p] e -> findMap' e -- XXX no need to look at the patterns?
+
         _        -> False
 
 
@@ -38,6 +43,8 @@ test_blah  = assertBool =<< findMap [| streamMap (+1) streamSrc |]
 test_blah2 = assertBool =<< findMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
 test_blah3 = assertBool =<< findMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
 test_blah4 = assertBool =<< findMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
+
+test_blahL = assertBool =<< findMap [| \e -> streamMap (+1) e |]
 
 ------------------------------------------------------------------------------
 -- splicing
