@@ -40,10 +40,10 @@ findMap' exp = case exp of
         _        -> False
 
 
-test_blah  = assertBool =<< findMap [| streamMap (+1) streamSrc |]
-test_blah2 = assertBool =<< findMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
-test_blah3 = assertBool =<< findMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
-test_blah4 = assertBool =<< findMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
+test_bare  = assertBool =<< findMap [| streamMap (+1) streamSrc |]
+test_two   = assertBool =<< findMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
+test_comp  = assertBool =<< findMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
+test_dollar= assertBool =<< findMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
 
 test_lambda= assertBool =<< findMap [| \e -> streamMap (+1) e |]
 
