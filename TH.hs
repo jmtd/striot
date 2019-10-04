@@ -48,15 +48,3 @@ streamSrc = map (\n -> (Event 0 Nothing (Just n))) [1,2,4,5]
 blah :: Quasi m => m Bool
 blah = runQ [| streamMap (+1) streamSrc |] >>= findMap'' -- True
 
--- can't embed, we need someting that runs Quasi m
---test_blah = assertBool blah
-
--- temporarily ignore the time argument to avoid having to implement Lift for
--- UTCTime and all constituent types
-instance Lift a => Lift (Event a) where
-    -- lift :: lift t => t -> Q exp
-    lift (Event i t v) = do
-        i' <- runQ (lift i)
-        v' <- runQ (lift v)
-        let t' = ListE [] -- dummy value
-        return $ AppE (AppE (AppE (ConE (mkName "Event")) i') t') v'
