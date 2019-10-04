@@ -17,12 +17,12 @@ streamSrc = map (\n -> (Event 0 Nothing (Just n))) [1,2,4,5]
 -- a function that can identify whether there's a "streamMap" embedded
 -- in the supplied expression
 
--- e.g. findMap [| streamMap (+3) |]
 findMap expq = runQ expq >>= return . findMap'
 
--- XXX I wonder if there's a smarter way to traverse the Exp structure than
--- pattern matching like this (something like generic traversal from that
---  paper)
+-- TODO rather than exhaustively pattern-match through all Exp types (and
+-- also Pattern types, and Dec types, and…), explore "generic traversal",
+-- e.g. https://michaeldadams.org/papers/tyb/tyb-2012-haskell.pdf via
+-- https://www.microsoft.com/en-us/research/wp-content/uploads/2003/01/hmap.pdf
 findMap' exp = case exp of
         ListE [] -> False
         ListE xs -> or $ map findMap' xs 
@@ -51,21 +51,5 @@ test_lambda = testMap [| \e -> streamMap (+1) e |]
 test_cond   = testMap [| if True then streamMap (+1) else streamfilter (<1) |]
 test_tuple  = testMap [| (streamMap, streamFilter) |]
 test_let    = testMap [| let f = streamSrc in streamMap (+1) f |]
-
--- demonstrates we need to handle the [Dec] parameter to LetE
---test_let2  = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
-
-------------------------------------------------------------------------------
--- splicing
-
-{-
--- an example of returning the actual input code
--- this doesn't work because: • GHC stage restriction:
---   ‘exp’ is used in a top-level splice, quasi-quote, or annotation,
---   and must be imported, not defined locally
-findMap''' expq = do
-    exp <- runQ expq
-    return $ if   findMap' exp
-             then $( exp )
-             else streamSrc
--}
+-- fails… demonstrates we need to handle the [Dec] parameter to LetE
+test_let2  = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
