@@ -35,8 +35,8 @@ findMap' exp = case exp of
         InfixE Nothing  b Nothing  -> findMap' b
 
         LamE [p] e -> findMap' e -- XXX no need to look at the patterns?
-
         CondE a b c -> findMap' a || findMap' b || findMap' c
+        TupE xs  -> or $ map findMap' xs
         _        -> False
 
 
@@ -49,6 +49,7 @@ test_lambda= assertBool =<< findMap [| \e -> streamMap (+1) e |]
 
 test_cond  = assertBool =<< findMap [| if True then streamMap (+1) else streamfilter (<1) |]
 
+test_tuple = assertBool =<< findMap [| (streamMap, streamFilter) |]
 
 ------------------------------------------------------------------------------
 -- splicing
