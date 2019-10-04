@@ -29,10 +29,19 @@ findMap' exp = case exp of
         ListE xs -> or $ map findMap' xs 
         AppE a b -> findMap' a || findMap' b
         VarE n   -> (show n) == "Striot.FunctionalProcessing.streamMap"
+
+        InfixE (Just a) b (Just c) -> findMap' a || findMap' b || findMap' c
+        InfixE Nothing  b (Just c) -> findMap' b || findMap' c
+        InfixE (Just a) b Nothing  -> findMap' a || findMap' b
+        InfixE Nothing  b Nothing  -> findMap' b
+
         _        -> False
 
 
-test_blah = assertBool =<< findMap [| streamMap (+1) streamSrc |]
+test_blah  = assertBool =<< findMap [| streamMap (+1) streamSrc |]
+test_blah2 = assertBool =<< findMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
+test_blah3 = assertBool =<< findMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
+test_blah4 = assertBool =<< findMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
 
 ------------------------------------------------------------------------------
 -- splicing
