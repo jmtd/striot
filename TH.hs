@@ -41,20 +41,18 @@ findMap' exp = case exp of
         LetE decs e -> findMap' e
         _        -> False
 
+testMap expq = assertBool =<< findMap expq
 
-test_bare  = assertBool =<< findMap [| streamMap (+1) streamSrc |]
-test_two   = assertBool =<< findMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
-test_comp  = assertBool =<< findMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
-test_dollar= assertBool =<< findMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
+test_bare   = testMap [| streamMap (+1) streamSrc |]
+test_two    = testMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
+test_comp   = testMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
+test_dollar = testMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
+test_lambda = testMap [| \e -> streamMap (+1) e |]
+test_cond   = testMap [| if True then streamMap (+1) else streamfilter (<1) |]
+test_tuple  = testMap [| (streamMap, streamFilter) |]
+test_let    = testMap [| let f = streamSrc in streamMap (+1) f |]
 
-test_lambda= assertBool =<< findMap [| \e -> streamMap (+1) e |]
-
-test_cond  = assertBool =<< findMap [| if True then streamMap (+1) else streamfilter (<1) |]
-
-test_tuple = assertBool =<< findMap [| (streamMap, streamFilter) |]
-
-test_let   = assertBool =<< findMap [| let f = streamSrc in streamMap (+1) f |]
--- demonstrates we need to handle Dec
+-- demonstrates we need to handle the [Dec] parameter to LetE
 --test_let2  = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
 
 ------------------------------------------------------------------------------
