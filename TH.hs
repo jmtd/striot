@@ -52,4 +52,6 @@ test_cond   = testMap [| if True then streamMap (+1) else streamfilter (<1) |]
 test_tuple  = testMap [| (streamMap, streamFilter) |]
 test_let    = testMap [| let f = streamSrc in streamMap (+1) f |]
 -- fails… demonstrates we need to handle the [Dec] parameter to LetE
-test_let2  = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
+test_let2   = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
+-- demonstrate limitation of our let handling:
+test_let3   = testMap [| let streamMap = streamFilter in streamMap (>1) streamSrc |]
