@@ -191,20 +191,27 @@ b)*), we need a means of converting the Events into the original type, i.e.,
 *(b → a)*, but we don't have it (in general `streamMap` is not reversible)
 
 // X1 04: streamScan . streamFilter
+[start=4]
+04. `streamScan . streamFilter`
 
-Same reasoning as 02.
+Same reasoning as 2.
 
 // X  05: streamWindow . streamFilter
 // X4 06: streamExpand . streamFilter
 // X5 07: streamJoin . streamFilter
 // X4 14: streamExpand . streamMap
-// X1 18: streamMap . streamFilterAcc
 
-Same reasoning as 02.
+// X1 18: streamMap . streamFilterAcc
+[start=18]
+18. `streamMap . streamFilterAcc`
+
+Same reasoning as 2.
 
 // X  20: streamScan . streamFilterAcc
+[start=20]
+20. `streamScan . streamFilterAcc`
 
-Same reasoning as 02.
+Same reasoning as 2.
 
 // X  21: streamWindow . streamFilterAcc
 // X4 22: streamExpand . streamFilterAcc
@@ -212,33 +219,41 @@ Same reasoning as 02.
 // X8 24: streamMerge . streamFilterAcc
 
 // X7  25: streamFilter . streamScan
+[start=25]
+25. `streamFilter . streamScan`
 
 We can't compose the arguments from streamScan with the predicate from streamFilter
 and get the same results since we can't thread the result back in as per streamScan
 (consider trying this with "counter")
 
 // X9  26: streamMap . streamScan
+[start=26]
+26. `streamMap . streamScan`
 
 Not possible: the problem is the streamMap-arg-processed accumulator output is
 fed back in
 
 // X7  27: streamFilterAcc . streamScan
+[start=27]
+27. `streamFilterAcc . streamScan`
 
 As 25, above.
 
 // X6 28: streamScan . streamScan
+[start=28]
+28. `streamScan . streamScan`
 
-//////////////////////////////////////////////////////////////////////////////
 the problem is the accumulator of scan is not hidden (like filterAcc); it's
 the return value! so we can't easily hide our work
-//////////////////////////////////////////////////////////////////////////////
+
+TODO this explanation is lacking
 
 // X  29: streamWindow . streamScan
 // X4 30: streamExpand . streamScan
 
 
 // X3 38: streamExpand . streamWindow
-
+[start=38]
 38. `streamExpand . streamWindow`
 
 In terms of the value payload of a stream, an expand immediately after a window
@@ -414,12 +429,13 @@ sX = [Event {eventId = -2, time = Nothing, value = Just 'L'},
 
 [start=9]
 4. `streamMap` into `streamFilter`
-   Where `next` is the example map function (chooses the next item in a sequence
-   and wraps from the end to the start).
-   
-   If p is highly selective, then the overhead of evaluating f
-   twice per selected event may be lower than the savings made by
-   reducing the list de/reconstruction overhead of streamMap.
+
+Where `next` is the example map function (chooses the next item in a sequence
+and wraps from the end to the start).
+
+If p is highly selective, then the overhead of evaluating f
+twice per selected event may be lower than the savings made by
+reducing the list de/reconstruction overhead of streamMap.
 
 \begin{code}
 ------------------------------------------------------------------------------
