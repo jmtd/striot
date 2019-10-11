@@ -26,8 +26,12 @@ findMap expq = runQ expq >>= return . findMap'
 findMap' exp = case exp of
         ListE [] -> False
         ListE xs -> or $ map findMap' xs 
+
+        AppE (VarE n) b -> (show n)
+            == "Striot.FunctionalProcessing.streamMap" || findMap' b
+
         AppE a b -> findMap' a || findMap' b
-        VarE n   -> (show n) == "Striot.FunctionalProcessing.streamMap"
+        --VarE n   -> (show n) == "Striot.FunctionalProcessing.streamMap"
 
         InfixE (Just a) b (Just c) -> findMap' a || findMap' b || findMap' c
         InfixE Nothing  b (Just c) -> findMap' b || findMap' c
@@ -43,6 +47,7 @@ findMap' exp = case exp of
 
 testMap expq = assertBool =<< findMap expq
 
+-- passing tests
 test_bare   = testMap [| streamMap (+1) streamSrc |]
 test_two    = testMap [| streamMap (+1) (streamMap (*2) streamSrc) |]
 test_comp   = testMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
@@ -51,7 +56,9 @@ test_lambda = testMap [| \e -> streamMap (+1) e |]
 test_cond   = testMap [| if True then streamMap (+1) else streamfilter (<1) |]
 test_tuple  = testMap [| (streamMap, streamFilter) |]
 test_let    = testMap [| let f = streamSrc in streamMap (+1) f |]
--- fails… demonstrates we need to handle the [Dec] parameter to LetE
+
+-- failing tests
+-- demonstrates we need to handle the [Dec] parameter to LetE
 test_let2   = assertBool =<< findMap [| let f = streamMap in f (+1) streamSrc |]
--- demonstrate limitation of our let handling:
+-- demonstrate limitation of our let handling
 test_let3   = testMap [| let streamMap = streamFilter in streamMap (>1) streamSrc |]
