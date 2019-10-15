@@ -31,7 +31,6 @@ findMap' exp = case exp of
             == "Striot.FunctionalProcessing.streamMap" || findMap' b
 
         AppE a b -> findMap' a || findMap' b
-        --VarE n   -> (show n) == "Striot.FunctionalProcessing.streamMap"
 
         InfixE (Just a) b (Just c) -> findMap' a || findMap' b || findMap' c
         InfixE Nothing  b (Just c) -> findMap' b || findMap' c
@@ -54,7 +53,7 @@ test_comp   = testMap [| (streamMap (+1) . streamMap (*2)) streamSrc |]
 test_dollar = testMap [| streamMap (+1) . streamMap (*2) $ streamSrc |]
 test_lambda = testMap [| \e -> streamMap (+1) e |]
 test_cond   = testMap [| if True then streamMap (+1) else streamfilter (<1) |]
-test_tuple  = testMap [| (streamMap, streamFilter) |]
+test_tuple  = testMap [| (streamMap (+1), streamFilter) |]
 test_let    = testMap [| let f = streamSrc in streamMap (+1) f |]
 
 -- failing tests
