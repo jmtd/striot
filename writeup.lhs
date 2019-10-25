@@ -315,9 +315,131 @@ pxxp_windowExpand2 n s = (windowExpandPre n) s \section{s}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\subsection{Non-total rules}
+
+TODO explain what this means
+
+\begin{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GRID CELL 8
+\item \texttt{streamMerge [streamFilter f s1, streamFilter f s2]
+    = streamFilter f \$ streammerge [s1, s2]}
+
+This is not "total", because ordering is not preserved.
+
+TODO could we use the Maybe trick?
+
+\begin{code}
+filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
+filterMergePost s  = streamFilter f $ streamMerge [sA, s]
+-- this is very slow to execute but passes
+pxxp_filterMerge s = sort (filterMergePre s) \section{sort (filterMergePost s)}
+pxxp_filterMerge2 s = filterMergePre s \section{filterMergePost s}
+
+-- Nope!
+filterMergePost2 = mergeFilterPost2
+prop_filterMerge2 s = filterMergePre s \section{filterMergePost2 s}
+-- 
+sX = [Event {eventId = -2, time = Nothing, value = Just 'L'},
+      Event {eventId = -2, time = Nothing, value = Just '\212'}]
+
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GRID CELL 48
+%%  12 48: streamMerge . streamExpand
+\item \texttt{streamMerge [streamExpand s2, streamExpand s2]
+    = streamExpand (streamMerge [s1,s2])}
+
+TODO not total, ordering not preserved (in some circumstances? when a stream
+terminates?) remove from this section
+
+\begin{code}
+expandMergePre s = streamMerge [streamExpand w1, streamExpand w2] where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+expandMergePost s = streamExpand (streamMerge [w1,w2]) where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+-- expensive, passes
+pxxp_expandMerge s = sort (expandMergePre s) \section{sort (expandMergePost s)}
+-- or
+pxxp_expandMerge2 s = (expandMergePre s) \section{(expandMergePost s)}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  57 57: streamFilter . streamMerge
+
+%% GRID CELL 57
+\item \texttt{streamFilter . streamMerge}
+
+Simply pushing the filters up to the streams that are the input to the merge
+will not preserve the precise order of events. This can be addressed with the
+additional Maybe wrapping and unwrapping as below
+
+TODO can we use this Maybe trick for any of the other non-total cases around
+streamMerge?
+
+\begin{code}
+mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
+-- this does not preserve order
+mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
+-- this is very slow to execute but passes
+pxxp_mergeFilter s = sort (mergeFilterPre s) \section{sort (mergeFilterPost s)}
+-- fails due to reordering
+pxxp_mergeFilter2 s =  (mergeFilterPre s) \section{ (mergeFilterPost s)}
+
+mergeFilterPost2 s = streamMap fromJust
+                   $ streamFilter isJust
+                   $ streamMerge [
+                       streamMap (ifJust f) sA,
+                       streamMap (ifJust f)  s
+                   ] where ifJust f v = if f v then Just v else Nothing
+
+prop_mergeFilter s = mergeFilterPre s \section{mergeFilterPost2 s}
+\end{code}
+
+There are some issues to consider about constant or variable size of
+lists in the case where the stream data type is a list, such as after
+a streamWindow operator. In the case of streamWindow, the output list
+size will be constant, but this is not reflected in the type.
+(TODO : where does this matter?)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  3 62: streamExpand . streamMerge
+
+%% GRID CELL 62
+\item \texttt{streamExpand (streamMerge [s1,s2])
+    = streamMerge [streamExpand s2, streamExpand s2]}
+
+TODO not total, reorders
+
+\begin{code}
+mergeExpandPre s = streamExpand (streamMerge [w1,w2]) where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
+    w1 = streamWindow (chop 2) sA
+    w2 = streamWindow (chop 2) s
+
+-- \textit{very} expensive to evaluate
+-- passes
+pxxp_mergeExpand s = sort (mergeExpandPre s) \section{sort (mergeExpandPost s)}
+-- fails: reorders
+pxxp_mergeExpand2 s =  (mergeExpandPre s) \section{ (mergeExpandPost s)}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Summary}
 
-23 rules
+20 rules % RULECOUNT
 
 TODO any inversions? with or without caveats? (without caveats would probably
 be caught just through the systematic approach)
@@ -344,13 +466,15 @@ general it seems no useful rewrites exist for this category of pairs.
 
 \section{Conclusion}
 
-There are 64 pairings of 8 functional operators. Systematically looking
-for ways to rewrite each pair whilst preserving the functional
-definition yielded up to 27 rewrite rules: 12 rules classified as
-applicable in any circumstance (total), a further 7 with caveats
-discovered by testing for inversions of the first 12, and a further
-8 partial rules that apply if certain external properties of the stream
-apply (such as, strict order not being important)
+There are 64 pairings of 8 functional operators. Systematically looking for
+ways to rewrite each pair whilst preserving the functional definition yielded
+20 rewrite rules that are applicable in any circumstance.
+
+% TODO recalc these numbers and re-incorporate:
+% 12 rules classified as applicable in any circumstance (total), a further 7 with caveats
+% discovered by testing for inversions of the first 12, and a further
+% 8 partial rules that apply if certain external properties of the stream
+% apply (such as, strict order not being important)
 
 These rules may prove useful as a base set of possible rewrites that
 could be applied to a stream processing graph in order to change and/or
@@ -413,32 +537,7 @@ prop_filterFilterAcc s = filterFilterAccPre s \section{filterFilterAccPost s}
 
 %%     08: streamMerge . streamFilter
 
-%% GRID CELL 8
-\item \texttt{streamMerge [streamFilter f s1, streamFilter f s2]
-    = streamFilter f \$ streammerge [s1, s2]}
-
-This is not "total", because ordering is not preserved.
-
-TODO move out of this section?
-
-TODO could we use the Maybe trick?
-
-\begin{code}
-filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
-filterMergePost s  = streamFilter f $ streamMerge [sA, s]
--- this is very slow to execute but passes
-pxxp_filterMerge s = sort (filterMergePre s) \section{sort (filterMergePost s)}
-pxxp_filterMerge2 s = filterMergePre s \section{filterMergePost s}
-
--- Nope!
-filterMergePost2 = mergeFilterPost2
-prop_filterMerge2 s = filterMergePre s \section{filterMergePost2 s}
--- 
-sX = [Event {eventId = -2, time = Nothing, value = Just 'L'},
-      Event {eventId = -2, time = Nothing, value = Just '\212'}]
-
-\end{code}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  2  09: streamFilter . streamMap
 
 %% GRID CELL 9
@@ -719,69 +818,7 @@ prop_expandExpand :: Stream [[Char]] -> Bool
 prop_expandExpand s = expandExpandPre s \section{expandExpandPost s}
 \end{code}
 
-%%  12 48: streamMerge . streamExpand
-
-%% GRID CELL 48
-\item \texttt{streamMerge [streamExpand s2, streamExpand s2]
-    = streamExpand (streamMerge [s1,s2])}
-
-TODO not total, ordering not preserved (in some circumstances? when a stream
-terminates?) remove from this section
-
-\begin{code}
-expandMergePre s = streamMerge [streamExpand w1, streamExpand w2] where
-    w1 = streamWindow (chop 2) sA
-    w2 = streamWindow (chop 2) s
-
-expandMergePost s = streamExpand (streamMerge [w1,w2]) where
-    w1 = streamWindow (chop 2) sA
-    w2 = streamWindow (chop 2) s
-
--- expensive, passes
-pxxp_expandMerge s = sort (expandMergePre s) \section{sort (expandMergePost s)}
--- or
-pxxp_expandMerge2 s = (expandMergePre s) \section{(expandMergePost s)}
-\end{code}
-
-%%  57 57: streamFilter . streamMerge
-
-%% GRID CELL 57
-\item \texttt{streamFilter . streamMerge}
-
-Simply pushing the filters up to the streams that are the input to the merge
-will not preserve the precise order of events. This can be addressed with the
-additional Maybe wrapping and unwrapping as below
-
-TODO can we use this Maybe trick for any of the other non-total cases around
-streamMerge?
-
-\begin{code}
-mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
--- this does not preserve order
-mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
--- this is very slow to execute but passes
-pxxp_mergeFilter s = sort (mergeFilterPre s) \section{sort (mergeFilterPost s)}
--- fails due to reordering
-pxxp_mergeFilter2 s =  (mergeFilterPre s) \section{ (mergeFilterPost s)}
-
-mergeFilterPost2 s = streamMap fromJust
-                   $ streamFilter isJust
-                   $ streamMerge [
-                       streamMap (ifJust f) sA,
-                       streamMap (ifJust f)  s
-                   ] where ifJust f v = if f v then Just v else Nothing
-
-prop_mergeFilter s = mergeFilterPre s \section{mergeFilterPost2 s}
-\end{code}
-
-There are some issues to consider about constant or variable size of
-lists in the case where the stream data type is a list, such as after
-a streamWindow operator. In the case of streamWindow, the output list
-size will be constant, but this is not reflected in the type.
-(TODO : where does this matter?)
-
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%   7 58: streamMap . streamMerge
 
 %% GRID CELL 58
@@ -794,30 +831,7 @@ mergeMapPost s = streamMerge [streamMap isAscii sA, streamMap isAscii s]
 pxxp_mergeMap s = mergeMapPre s \section{mergeMapPost s}
 \end{code}
 
-%%  3 62: streamExpand . streamMerge
-
-%% GRID CELL 62
-\item \texttt{streamExpand (streamMerge [s1,s2])
-    = streamMerge [streamExpand s2, streamExpand s2]}
-
-TODO not total, reorders
-
-\begin{code}
-mergeExpandPre s = streamExpand (streamMerge [w1,w2]) where
-    w1 = streamWindow (chop 2) sA
-    w2 = streamWindow (chop 2) s
-
-mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
-    w1 = streamWindow (chop 2) sA
-    w2 = streamWindow (chop 2) s
-
--- \textit{very} expensive to evaluate
--- passes
-pxxp_mergeExpand s = sort (mergeExpandPre s) \section{sort (mergeExpandPost s)}
--- fails: reorders
-pxxp_mergeExpand2 s =  (mergeExpandPre s) \section{ (mergeExpandPost s)}
-\end{code}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  .  64: streamMerge . streamMerge
 
 %% GRID CELL 64
