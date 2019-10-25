@@ -790,13 +790,12 @@ prop_scanExpand2 s = scanExpandPre2 s \section{scanExpandPost2 s}
 \end{code}
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  ?  45: streamWindow . streamExpand
-
 %% GRID CELL 45
-\item \texttt{streamWindow . streamExpand}
+\item \texttt{streamWindow w . streamExpand . streamWindow w = id}
 
-TODO write about the caveat that this only applies if we ignore the metadata
-in the event wrappers?
+NOTE This is not a more generic \textt{streamWindow . streamExpand}
 
 This is very specific to the WindowMaker in the streamWindow that is not in
 consideration here (whatever created the windows that are consumed by
@@ -814,6 +813,7 @@ prop_expandWindow1 s = expandWindowPre1 2 w \section{expandWindowPost1 w}
     where w = streamWindow (chop 2) s
 \end{code}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  4  46: streamExpand . streamExpand
 
 %% GRID CELL 46
