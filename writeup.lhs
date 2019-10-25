@@ -1,5 +1,7 @@
 % TODO - there's only 31 grid cell comments, there should be 64?
 
+% TODO - use >>> instead of '.' and consistently read LTR
+
 \documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
@@ -37,6 +39,7 @@ import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
 import Data.Maybe
+import Control.Arrow (>>>)
 
 \end{code}
 
@@ -605,7 +608,6 @@ prop_mapScan s = mapScanPre s == mapScanPost s
 
 %% GRID CELL 17
 \item \texttt{streamFilter . streamFilterAcc}
-   (total)
 
 \begin{code}
 filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
@@ -617,7 +619,7 @@ prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
 %%  F  19: streamFilterAcc . streamFilterAcc
 
 %% GRID CELL 19
-\item \texttt{streamFilterAcc} fusion (total)
+\item \texttt{streamFilterAcc} fusion
 
 \begin{code}
 filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
@@ -693,7 +695,7 @@ pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 %%  2  09: streamFilter . streamMap
 
 %% GRID CELL 9
-\item \texttt{streamMap` into `streamFilter}
+\item \texttt{streamFilter . streamMap}
 
 Where \texttt{next} is the example map function (chooses the next item in a sequence
 and wraps from the end to the start).
@@ -714,7 +716,7 @@ prop_mapFilter s = mapFilterPre s == mapFilterPost s
 %%  5  11: streamFilterAcc . streamMap
 
 %% GRID CELL 11
-\item \texttt{streamMap` into `streamFilterAcc} (total)
+\item \texttt{streamFilterAcc . streamMap}
 
 \begin{code}
 mapFilterAccPre     = streamFilterAcc accfn 0 accpred . streamMap next
@@ -739,7 +741,7 @@ prop_mapWindow s = mapWindowPre s == mapWindowPost s
 %%     15: streamJoin . streamMap
 
 %% GRID CELL 15
-\item \texttt{streamJoin . streamMap} (total)
+\item \texttt{streamJoin . streamMap}
 
 \begin{code}
 mapJoinPre     = streamJoin sA . streamMap next
@@ -791,7 +793,7 @@ prop_scanJoin s = scanJoinPre s == scanJoinPost s
 
 %% GRID CELL 42
 \item \texttt{streamMap . streamExpand}
-   (total)
+
    TODO consider the Event wrappers
 
 \begin{code}
