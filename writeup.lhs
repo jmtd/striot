@@ -383,6 +383,9 @@ additional Maybe wrapping and unwrapping as below
 TODO can we use this Maybe trick for any of the other non-total cases around
 streamMerge?
 
+TODO pre and post are the same thing! In both cases the filter is further
+downstream. Does the maybe trick still work if we fix this?
+
 \begin{code}
 mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
 -- this does not preserve order
@@ -434,12 +437,40 @@ pxxp_mergeExpand2 s =  (mergeExpandPre s) \section{ (mergeExpandPost s)}
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  11 40: streamMerge . streamWindow
+%% GRID CELL 40
+\item \texttt{streamMerge . streamWindow}
+
+TODO this is a very specific example. Can we always compose frob? Effectively
+we need to know how the WindowMaker works. So really this is not a "totally
+applicable" rule; we either need fission or more user-supplied information.
+
+\begin{code}
+frob :: WindowMaker a -- Stream a -> [Stream a]
+frob [] = []
+frob s = let [x1,y1,x2,y2,x3,y3,x4,y4,x5,y5] = take 10 s
+         in [x1,x2,x3,x4,x5] : [y1,y2,y3,y4,y5] : (frob (drop 10 s))
+
+windowMergePre s = streamMerge [ streamWindow (chop 5) sA
+                               , streamWindow (chop 5) s ]
+
+windowMergePost s = streamWindow frob (streamMerge [sA,s])
+
+-- failing
+test_windowMerge = assertBool $ take 10 (windowMergePre sB) \section{take 10 (windowMergePost sB)}
+
+-- TODO: doesn't work: failing on an empty list?
+-- Behaviour when sampling <10 is different (due to frob impl)
+prop_windowMerge s = windowMergePre s \section{windowMergePost s}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Summary}
 
-20 rules % RULECOUNT
+19 rules % RULECOUNT
 
 TODO any inversions? with or without caveats? (without caveats would probably
 be caught just through the systematic approach)
@@ -682,30 +713,7 @@ prop_scanJoin s = scanJoinPre s \section{scanJoinPost s}
 %%  ?  36: streamScan . streamWindow
 %%  ?  37: streamWindow . streamWindow
 
-%%  11 40: streamMerge . streamWindow
-
-%% GRID CELL 40
-\item \texttt{streamMerge . streamWindow}
-
-\begin{code}
-frob :: WindowMaker a -- Stream a -> [Stream a]
-frob [] = []
-frob s = let [x1,y1,x2,y2,x3,y3,x4,y4,x5,y5] = take 10 s
-         in [x1,x2,x3,x4,x5] : [y1,y2,y3,y4,y5] : (frob (drop 10 s))
-
-windowMergePre s = streamMerge [ streamWindow (chop 5) sA
-                               , streamWindow (chop 5) s ]
-
-windowMergePost s = streamWindow frob (streamMerge [sA,s])
-
--- failing
-test_windowMerge = assertBool $ take 10 (windowMergePre sB) \section{take 10 (windowMergePost sB)}
-
--- TODO: doesn't work: failing on an empty list?
--- Behaviour when sampling <10 is different (due to frob impl)
-prop_windowMerge s = windowMergePre s \section{windowMergePost s}
-\end{code}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  9  41: streamFilter . streamExpand
 
 %% GRID CELL 41
