@@ -3,6 +3,7 @@
 \documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
+\usepackage{enumitem}
 
 % jmtd - convenience function to make code blocks more concise
 \ifdefined\MINTEDON
@@ -683,9 +684,7 @@ pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 \subsection{not self-evidently useful rules}
 % TODO Rename!
 
-% TODO can we begin numbering here to follow the previous section (which was
-% 9, so start at 10?)
-\begin{enumerate}
+\begin{enumerate}[resume]
 
 %%     08: streamMerge . streamFilter
 %% TODO
