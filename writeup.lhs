@@ -283,11 +283,11 @@ constructed Event. Therefore, this rewrite is not Total.
 windowExpandPre n    = streamExpand . streamWindow (chop n)
 prop_windowExpand1  :: Stream Char -> Bool
 -- failing!
-prop_windowExpand1 s = (windowExpandPre 2) s \section{s}
+prop_windowExpand1 s = (windowExpandPre 2) s == s
 
 -- works but expensive to evaluate
 pxxp_windowExpand2 :: Int -> Stream Char -> Bool
-pxxp_windowExpand2 n s = (windowExpandPre n) s \section{s}
+pxxp_windowExpand2 n s = (windowExpandPre n) s == s
 
 -- TODO: why does prop_windowExpand1 fail if pxxp_windowExpand2 does not?
 -- does pxxp_windowExpand2 2 fail? Can we write a generator that populates
@@ -334,12 +334,12 @@ TODO could we use the Maybe trick?
 filterMergePre  s  = streamMerge [streamFilter f sA, streamFilter f s]
 filterMergePost s  = streamFilter f $ streamMerge [sA, s]
 -- this is very slow to execute but passes
-pxxp_filterMerge s = sort (filterMergePre s) \section{sort (filterMergePost s)}
-pxxp_filterMerge2 s = filterMergePre s \section{filterMergePost s}
+pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
+pxxp_filterMerge2 s = filterMergePre s == filterMergePost s
 
 -- Nope!
 filterMergePost2 = mergeFilterPost2
-prop_filterMerge2 s = filterMergePre s \section{filterMergePost2 s}
+prop_filterMerge2 s = filterMergePre s == filterMergePost2 s
 -- 
 sX = [Event {eventId = -2, time = Nothing, value = Just 'L'},
       Event {eventId = -2, time = Nothing, value = Just '\212'}]
@@ -365,9 +365,9 @@ expandMergePost s = streamExpand (streamMerge [w1,w2]) where
     w2 = streamWindow (chop 2) s
 
 -- expensive, passes
-pxxp_expandMerge s = sort (expandMergePre s) \section{sort (expandMergePost s)}
+pxxp_expandMerge s = sort (expandMergePre s) == sort (expandMergePost s)
 -- or
-pxxp_expandMerge2 s = (expandMergePre s) \section{(expandMergePost s)}
+pxxp_expandMerge2 s = expandMergePre s == expandMergePost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -391,9 +391,9 @@ mergeFilterPre  s  = streamFilter f $ streamMerge [sA, s]
 -- this does not preserve order
 mergeFilterPost s  = streamMerge [streamFilter f sA, streamFilter f s]
 -- this is very slow to execute but passes
-pxxp_mergeFilter s = sort (mergeFilterPre s) \section{sort (mergeFilterPost s)}
+pxxp_mergeFilter s = sort (mergeFilterPre s) == sort (mergeFilterPost s)
 -- fails due to reordering
-pxxp_mergeFilter2 s =  (mergeFilterPre s) \section{ (mergeFilterPost s)}
+pxxp_mergeFilter2 s =  mergeFilterPre s == mergeFilterPost s
 
 mergeFilterPost2 s = streamMap fromJust
                    $ streamFilter isJust
@@ -402,7 +402,7 @@ mergeFilterPost2 s = streamMap fromJust
                        streamMap (ifJust f)  s
                    ] where ifJust f v = if f v then Just v else Nothing
 
-prop_mergeFilter s = mergeFilterPre s \section{mergeFilterPost2 s}
+prop_mergeFilter s = mergeFilterPre s == mergeFilterPost2 s
 \end{code}
 
 There are some issues to consider about constant or variable size of
@@ -431,9 +431,9 @@ mergeExpandPost s = streamMerge [streamExpand w1, streamExpand w2] where
 
 -- \textit{very} expensive to evaluate
 -- passes
-pxxp_mergeExpand s = sort (mergeExpandPre s) \section{sort (mergeExpandPost s)}
+pxxp_mergeExpand s = sort (mergeExpandPre s) == sort (mergeExpandPost s)
 -- fails: reorders
-pxxp_mergeExpand2 s =  (mergeExpandPre s) \section{ (mergeExpandPost s)}
+pxxp_mergeExpand2 s = mergeExpandPre s == mergeExpandPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -457,11 +457,11 @@ windowMergePre s = streamMerge [ streamWindow (chop 5) sA
 windowMergePost s = streamWindow frob (streamMerge [sA,s])
 
 -- failing
-test_windowMerge = assertBool $ take 10 (windowMergePre sB) \section{take 10 (windowMergePost sB)}
+test_windowMerge = assertBool $ take 10 (windowMergePre sB) == take 10 (windowMergePost sB)
 
 -- TODO: doesn't work: failing on an empty list?
 -- Behaviour when sampling <10 is different (due to frob impl)
-prop_windowMerge s = windowMergePre s \section{windowMergePost s}
+prop_windowMerge s = windowMergePre s == windowMergePost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -553,9 +553,9 @@ consume less CPU time and/or memory.
 \begin{code}
 filterFilterPre     = streamFilter g . streamFilter f
 filterFilterPost    = streamFilter (\x -> f x && g x)
-prop_filterFilter s = filterFilterPre s \section{filterFilterPost s}
+prop_filterFilter s = filterFilterPre s == filterFilterPost s
 prop_filterFilter2 s=
-    (streamFilter g . streamFilter f) s \section{streamFilter (\x -> f x && g x) s}
+    (streamFilter g . streamFilter f) s == streamFilter (\x -> f x && g x) s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -570,7 +570,7 @@ filterFilterAccPost    =
         (\a v -> if g v then accfn1 a v else a)
         acc1
         (\x a -> g x && pred1 x a)
-prop_filterFilterAcc s = filterFilterAccPre s \section{filterFilterAccPost s}
+prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -582,7 +582,7 @@ prop_filterFilterAcc s = filterFilterAccPre s \section{filterFilterAccPost s}
 mapMapPre :: Stream Char -> Stream Char
 mapMapPre     = streamMap next . streamMap next
 mapMapPost    = streamMap (next . next)
-prop_mapMap s = mapMapPre s \section{mapMapPost s}
+prop_mapMap s = mapMapPre s == mapMapPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -596,7 +596,7 @@ mapScanPre     = streamScan scanfn 0 . streamMap next
 mapScanPost    = streamScan (flip (flip scanfn . next)) 0
 
 prop_mapScan :: Stream Int -> Bool
-prop_mapScan s = mapScanPre s \section{mapScanPost s}
+prop_mapScan s = mapScanPre s == mapScanPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -609,7 +609,7 @@ prop_mapScan s = mapScanPre s \section{mapScanPost s}
 \begin{code}
 filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
 filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
-prop_filterAccFilter s = filterAccFilterPre s \section{filterAccFilterPost s}
+prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -625,7 +625,7 @@ filterAccFilterAccPost    =
         (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
         (acc1,acc2)
         (\x (y,z) -> pred1 x y && pred2 x z)
-prop_filterAccFilterAcc s = filterAccFilterAccPre s \section{filterAccFilterAccPost s}
+prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -637,7 +637,7 @@ prop_filterAccFilterAcc s = filterAccFilterAccPre s \section{filterAccFilterAccP
 \begin{code}
 expandFilterPre     = streamFilter f . streamExpand
 expandFilterPost    = streamExpand . streamMap (filter f)
-prop_expandFilter s = expandFilterPre s \section{expandFilterPost s}
+prop_expandFilter s = expandFilterPre s == expandFilterPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -659,7 +659,7 @@ expandWindowPost1 = id
 -- to limit it to very small numbers (<10 or so) and that's tricky to specify;
 -- and HTF does not support QuickCheck's guard scheme n < 10 ==> ...
 prop_expandWindow1 :: Stream Char -> Bool
-prop_expandWindow1 s = expandWindowPre1 2 w \section{expandWindowPost1 w}
+prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 w
     where w = streamWindow (chop 2) s
 \end{code}
 
@@ -673,7 +673,7 @@ prop_expandWindow1 s = expandWindowPre1 2 w \section{expandWindowPost1 w}
 mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
 mergeMergePost c = streamMerge [sA, sB, c]
 -- passes but very expensive
-pxxp_mergeMerge s = mergeMergePre s \section{mergeMergePost s}
+pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 \end{code}
 
 
@@ -708,7 +708,7 @@ reducing the list de/reconstruction overhead of streamMap.
 -- perhaps p for filter and f for map
 mapFilterPre     = streamFilter f . streamMap next
 mapFilterPost    = streamMap next . streamFilter (f . next)
-prop_mapFilter s = mapFilterPre s \section{mapFilterPost s}
+prop_mapFilter s = mapFilterPre s == mapFilterPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -721,7 +721,7 @@ prop_mapFilter s = mapFilterPre s \section{mapFilterPost s}
 mapFilterAccPre     = streamFilterAcc accfn 0 accpred . streamMap next
 mapFilterAccPost    = streamMap next . streamFilterAcc accfn 0 (accpred . next)
 prop_mapFilterAcc :: Stream Char -> Bool
-prop_mapFilterAcc s = mapFilterAccPre s \section{mapFilterAccPost s}
+prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -734,7 +734,7 @@ prop_mapFilterAcc s = mapFilterAccPre s \section{mapFilterAccPost s}
 mapWindowPre :: Stream Char -> Stream [Char]
 mapWindowPre     = streamWindow (chop 2) . streamMap next
 mapWindowPost    = streamMap (map next) . streamWindow (chop 2)
-prop_mapWindow s = mapWindowPre s \section{mapWindowPost s}
+prop_mapWindow s = mapWindowPre s == mapWindowPost s
 \end{code}
 
 %%     15: streamJoin . streamMap
@@ -746,7 +746,7 @@ prop_mapWindow s = mapWindowPre s \section{mapWindowPost s}
 mapJoinPre     = streamJoin sA . streamMap next
 mapJoinPost    = streamMap (\(x,y) -> (x, next y)) . streamJoin sA
 prop_mapJoin  :: Stream Char -> Bool
-prop_mapJoin s = mapJoinPre s \section{mapJoinPost s}
+prop_mapJoin s = mapJoinPre s == mapJoinPost s
 \end{code}
 
 %%  8  16  streamMerge . streamMap
@@ -758,7 +758,7 @@ prop_mapJoin s = mapJoinPre s \section{mapJoinPost s}
 mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
 mapMergePost s = streamMap next $ streamMerge [sA,s]
 -- passes but slow
-pxxp_mapMerge s = mapMergePre s \section{mapMergePost s}
+pxxp_mapMerge s = mapMergePre s == mapMergePost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -775,7 +775,7 @@ scanJoinPre     = streamJoin sA . streamScan counter 0
 -- although the type of the '?' has to match the type of sA
 scanJoinPost    = streamScan (\c (x,y) -> (x, counter (snd c) y)) ('?',0) . streamJoin sA
 prop_scanJoin  :: Stream Char -> Bool
-prop_scanJoin s = scanJoinPre s \section{scanJoinPost s}
+prop_scanJoin s = scanJoinPre s == scanJoinPost s
 \end{code}
 
 
@@ -799,7 +799,7 @@ prop_scanJoin s = scanJoinPre s \section{scanJoinPost s}
 expandMapPre     = streamMap next . streamExpand
 expandMapPost    = streamExpand . streamMap (map next)
 prop_expandMap :: Stream [Char] -> Bool
-prop_expandMap s = expandMapPre s \section{expandMapPost s}
+prop_expandMap s = expandMapPre s == expandMapPost s
 \end{code}
 
 %%  ?  43: streamFilterAcc . streamExpand
@@ -833,9 +833,9 @@ scanExpandPost = streamExpand
     . streamFilter (/=[])
 
 prop_scanExpand :: Stream [Char] -> Bool
-prop_scanExpand s = scanExpandPre s \section{scanExpandPost s}
+prop_scanExpand s = scanExpandPre s == scanExpandPost s
 
-scanfn2 b a = if a > b then 1 else if b \section{a then 0 else -1}
+scanfn2 b a = if a > b then 1 else if b == a then 0 else -1
 scanAcc2 = 0
 
 scanExpandPre2 = (streamScan scanfn2 scanAcc2) . streamExpand
@@ -847,7 +847,7 @@ scanExpandPost2= streamExpand
 -- TODO the type is forced to Stream [Integer], possibly by scanAcc2,
 -- but it shouldn' tbe
 prop_scanExpand2 :: Stream [Integer] -> Bool
-prop_scanExpand2 s = scanExpandPre2 s \section{scanExpandPost2 s}
+prop_scanExpand2 s = scanExpandPre2 s == scanExpandPost2 s
 \end{code}
 
 
@@ -861,7 +861,7 @@ prop_scanExpand2 s = scanExpandPre2 s \section{scanExpandPost2 s}
 expandExpandPre     = streamExpand . streamExpand
 expandExpandPost    = streamExpand . streamMap concat
 prop_expandExpand :: Stream [[Char]] -> Bool
-prop_expandExpand s = expandExpandPre s \section{expandExpandPost s}
+prop_expandExpand s = expandExpandPre s == expandExpandPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -874,7 +874,7 @@ prop_expandExpand s = expandExpandPre s \section{expandExpandPost s}
 mergeMapPre s  = streamMap isAscii $ streamMerge [sA, s]
 mergeMapPost s = streamMerge [streamMap isAscii sA, streamMap isAscii s]
 -- expensive to evaluate -- passes
-pxxp_mergeMap s = mergeMapPre s \section{mergeMapPost s}
+pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -903,9 +903,9 @@ pred1 = (>=)
 
 -- avoids a situation where pred/succ will fail on the smallest/largest Enum type
 next :: (Eq a, Bounded a, Enum a) => a -> a
-next a = if a \section{maxBound then minBound else succ a}
+next a = if a == maxBound then minBound else succ a
 prev :: (Eq a, Bounded a, Enum a) => a -> a
-prev a = if a \section{minBound then maxBound else pred a}
+prev a = if a == minBound then maxBound else pred a
 
 -- test streams of characters
 -- XXX these are not infinite lists. Does that matter?
