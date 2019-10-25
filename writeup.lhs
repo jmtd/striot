@@ -337,7 +337,7 @@ filterMergePost s  = streamFilter f $ streamMerge [sA, s]
 pxxp_filterMerge s = sort (filterMergePre s) == sort (filterMergePost s)
 pxxp_filterMerge2 s = filterMergePre s == filterMergePost s
 
--- Nope!
+-- Nope! ... failing
 filterMergePost2 = mergeFilterPost2
 prop_filterMerge2 s = filterMergePre s == filterMergePost2 s
 -- 
@@ -771,9 +771,9 @@ TODO adapting from join . scan
 
 \begin{code}
 scanJoinPre     = streamJoin sA . streamScan counter 0
--- the '?' here is a "doesn't matter, shouldn't be looked at" value
--- although the type of the '?' has to match the type of sA
-scanJoinPost    = streamScan (\c (x,y) -> (x, counter (snd c) y)) ('?',0) . streamJoin sA
+-- one half of the accumulator is never examined, so 'undefined' is used as a
+-- placeholder.
+scanJoinPost    = streamScan (\c (x,y) -> (x, counter (snd c) y)) (undefined,0) . streamJoin sA
 prop_scanJoin  :: Stream Char -> Bool
 prop_scanJoin s = scanJoinPre s == scanJoinPost s
 \end{code}
