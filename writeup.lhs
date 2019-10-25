@@ -534,12 +534,21 @@ further 6 rewrite rules could be applied.
 \newpage
 \section{Rewrite rules}
 
-%% GRID CELL 1
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Self-evidently useful rules}
+
+Some of the rules are self-evidently useful, such as those which implement
+operator fusion: by reducing the number of operators, they reduce the
+complexity of the program and the amount of list construction/deconstruction
+taking place behind the scenes. The rewritten stream-processing program will
+consume less CPU time and/or memory.
 
 \begin{enumerate}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% GRID CELL 1
+
 \item \texttt{streamFilter . streamFilter} fusion
-   (total)
 
 \begin{code}
 filterFilterPre     = streamFilter g . streamFilter f
@@ -549,12 +558,10 @@ prop_filterFilter2 s=
     (streamFilter g . streamFilter f) s \section{streamFilter (\x -> f x && g x) s}
 \end{code}
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  F  03: streamFilterAcc . streamFilter
-
 %% GRID CELL 3
-\item \texttt{streamFilterAcc . streamFilter}
-   (total)
+\item \texttt{streamFilterAcc . streamFilter} fusion
 
 \begin{code}
 filterFilterAccPre     = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
@@ -566,7 +573,122 @@ filterFilterAccPost    =
 prop_filterFilterAcc s = filterFilterAccPre s \section{filterFilterAccPost s}
 \end{code}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  F  10: streamMap . streamMap
+%% GRID CELL 10
+\item \texttt{streamMap} (fusion)
+
+\begin{code}
+mapMapPre :: Stream Char -> Stream Char
+mapMapPre     = streamMap next . streamMap next
+mapMapPost    = streamMap (next . next)
+prop_mapMap s = mapMapPre s \section{mapMapPost s}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%     12: streamScan . streamMap
+
+%% GRID CELL 12
+\item \texttt{streamScan . streamMap} (fusion)
+
+\begin{code}
+mapScanPre     = streamScan scanfn 0 . streamMap next
+mapScanPost    = streamScan (flip (flip scanfn . next)) 0
+
+prop_mapScan :: Stream Int -> Bool
+prop_mapScan s = mapScanPre s \section{mapScanPost s}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  F  17: streamFilter . streamFilterAcc
+
+%% GRID CELL 17
+\item \texttt{streamFilter . streamFilterAcc}
+   (total)
+
+\begin{code}
+filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
+prop_filterAccFilter s = filterAccFilterPre s \section{filterAccFilterPost s}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  F  19: streamFilterAcc . streamFilterAcc
+
+%% GRID CELL 19
+\item \texttt{streamFilterAcc} fusion (total)
+
+\begin{code}
+filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterAccPost    =
+    streamFilterAcc
+        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
+        (acc1,acc2)
+        (\x (y,z) -> pred1 x y && pred2 x z)
+prop_filterAccFilterAcc s = filterAccFilterAccPre s \section{filterAccFilterAccPost s}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  9  41: streamFilter . streamExpand
+
+%% GRID CELL 41
+\item \texttt{streamFilter . streamExpand}
+
+\begin{code}
+expandFilterPre     = streamFilter f . streamExpand
+expandFilterPost    = streamExpand . streamMap (filter f)
+prop_expandFilter s = expandFilterPre s \section{expandFilterPost s}
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  ?  45: streamWindow . streamExpand
+%% GRID CELL 45
+\item \texttt{streamWindow w . streamExpand . streamWindow w = id}
+
+NOTE This is not a more generic \texttt{streamWindow . streamExpand}
+
+This is very specific to the WindowMaker in the streamWindow that is not in
+consideration here (whatever created the windows that are consumed by
+streamExpand.). So it's sooo specific I think this is ruled out.
+
+\begin{code}
+expandWindowPre1 n= streamWindow (chop n) . streamExpand
+expandWindowPost1 = id
+
+-- XXX it would be nice to use quickCheck to choose a window size, but we need
+-- to limit it to very small numbers (<10 or so) and that's tricky to specify;
+-- and HTF does not support QuickCheck's guard scheme n < 10 ==> ...
+prop_expandWindow1 :: Stream Char -> Bool
+prop_expandWindow1 s = expandWindowPre1 2 w \section{expandWindowPost1 w}
+    where w = streamWindow (chop 2) s
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  .  64: streamMerge . streamMerge
+
+%% GRID CELL 64
+\item \texttt{streamMerge} fusion
+
+\begin{code}
+mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
+mergeMergePost c = streamMerge [sA, sB, c]
+-- passes but very expensive
+pxxp_mergeMerge s = mergeMergePre s \section{mergeMergePost s}
+\end{code}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{enumerate}
+
+\subsection{not self-evidently useful rules}
+% TODO Rename!
+
+% TODO can we begin numbering here to follow the previous section (which was
+% 9, so start at 10?)
+\begin{enumerate}
+
 %%     08: streamMerge . streamFilter
+%% TODO
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  2  09: streamFilter . streamMap
@@ -589,18 +711,7 @@ mapFilterPost    = streamMap next . streamFilter (f . next)
 prop_mapFilter s = mapFilterPre s \section{mapFilterPost s}
 \end{code}
 
-%%  F  10: streamMap . streamMap
-
-%% GRID CELL 10
-\item \texttt{streamMap} fusion (total)
-
-\begin{code}
-mapMapPre :: Stream Char -> Stream Char
-mapMapPre     = streamMap next . streamMap next
-mapMapPost    = streamMap (next . next)
-prop_mapMap s = mapMapPre s \section{mapMapPost s}
-\end{code}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  5  11: streamFilterAcc . streamMap
 
 %% GRID CELL 11
@@ -613,19 +724,7 @@ prop_mapFilterAcc :: Stream Char -> Bool
 prop_mapFilterAcc s = mapFilterAccPre s \section{mapFilterAccPost s}
 \end{code}
 
-%%     12: streamScan . streamMap
-
-%% GRID CELL 12
-\item \texttt{streamScan . streamMap}: a variant of fusion (total)
-
-\begin{code}
-mapScanPre     = streamScan scanfn 0 . streamMap next
-mapScanPost    = streamScan (flip (flip scanfn . next)) 0
-
-prop_mapScan :: Stream Int -> Bool
-prop_mapScan s = mapScanPre s \section{mapScanPost s}
-\end{code}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  X  13: streamWindow . streamMap
 
 %% GRID CELL 13
@@ -662,33 +761,7 @@ mapMergePost s = streamMap next $ streamMerge [sA,s]
 pxxp_mapMerge s = mapMergePre s \section{mapMergePost s}
 \end{code}
 
-%%  F  17: streamFilter . streamFilterAcc
-
-%% GRID CELL 17
-\item \texttt{streamFilter . streamFilterAcc}
-   (total)
-
-\begin{code}
-filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
-filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
-prop_filterAccFilter s = filterAccFilterPre s \section{filterAccFilterPost s}
-\end{code}
-
-%%  F  19: streamFilterAcc . streamFilterAcc
-
-%% GRID CELL 19
-\item \texttt{streamFilterAcc} fusion (total)
-
-\begin{code}
-filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
-filterAccFilterAccPost    =
-    streamFilterAcc
-        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
-        (acc1,acc2)
-        (\x (y,z) -> pred1 x y && pred2 x z)
-prop_filterAccFilterAcc s = filterAccFilterAccPre s \section{filterAccFilterAccPost s}
-\end{code}
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  31 31: streamJoin . streamScan
 
 TODO adapting from join . scan
@@ -712,21 +785,9 @@ prop_scanJoin s = scanJoinPre s \section{scanJoinPost s}
 %%  ?  35: streamFilterAcc . streamWindow
 %%  ?  36: streamScan . streamWindow
 %%  ?  37: streamWindow . streamWindow
+%% TODO
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%  9  41: streamFilter . streamExpand
-
-%% GRID CELL 41
-\item \texttt{streamFilter . streamExpand}
-   (total)
-   TODO consider the Event wrappers
-
-\begin{code}
-expandFilterPre     = streamFilter f . streamExpand
-expandFilterPost    = streamExpand . streamMap (filter f)
-prop_expandFilter s = expandFilterPre s \section{expandFilterPost s}
-\end{code}
-
 %%  3  42: streamMap . streamExpand
 
 %% GRID CELL 42
@@ -791,29 +852,6 @@ prop_scanExpand2 s = scanExpandPre2 s \section{scanExpandPost2 s}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%  ?  45: streamWindow . streamExpand
-%% GRID CELL 45
-\item \texttt{streamWindow w . streamExpand . streamWindow w = id}
-
-NOTE This is not a more generic \textt{streamWindow . streamExpand}
-
-This is very specific to the WindowMaker in the streamWindow that is not in
-consideration here (whatever created the windows that are consumed by
-streamExpand.). So it's sooo specific I think this is ruled out.
-
-\begin{code}
-expandWindowPre1 n= streamWindow (chop n) . streamExpand
-expandWindowPost1 = id
-
--- XXX it would be nice to use quickCheck to choose a window size, but we need
--- to limit it to very small numbers (<10 or so) and that's tricky to specify;
--- and HTF does not support QuickCheck's guard scheme n < 10 ==> ...
-prop_expandWindow1 :: Stream Char -> Bool
-prop_expandWindow1 s = expandWindowPre1 2 w \section{expandWindowPost1 w}
-    where w = streamWindow (chop 2) s
-\end{code}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  4  46: streamExpand . streamExpand
 
 %% GRID CELL 46
@@ -840,18 +878,6 @@ pxxp_mergeMap s = mergeMapPre s \section{mergeMapPost s}
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%  .  64: streamMerge . streamMerge
-
-%% GRID CELL 64
-\item \texttt{streamMerge} fusion
-
-\begin{code}
-mergeMergePre c  = streamMerge [sA, streamMerge [sB,c]]
-mergeMergePost c = streamMerge [sA, sB, c]
--- passes but very expensive
-pxxp_mergeMerge s = mergeMergePre s \section{mergeMergePost s}
-\end{code}
-
 \section{Appendix}
 
 Utility Haskell code, required by the inline examples
