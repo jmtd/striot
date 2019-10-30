@@ -3,8 +3,6 @@
 
 % TODO - there's only 31 grid cell comments, there should be 64?
 
-% TODO - use >>> instead of '.' and consistently read LTR
-
 \documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
