@@ -212,12 +212,15 @@ complexity of the program and the amount of list construction/deconstruction
 taking place behind the scenes. The rewritten stream-processing program will
 consume less CPU time and/or memory.
 
+All four combinations of \texttt{streamFilter} and \texttt{streamFilterAcc}
+can be fused together.
+
 \begin{enumerate}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GRID CELL 1
 
-\item \texttt{streamFilter . streamFilter} fusion
+\item \texttt{streamFilter . streamFilter} (fusion)
 
 \begin{code}
 filterFilterPre     = streamFilter g . streamFilter f
@@ -230,7 +233,7 @@ prop_filterFilter2 s=
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  F  03: streamFilterAcc . streamFilter
 %% GRID CELL 3
-\item \texttt{streamFilterAcc . streamFilter} fusion
+\item \texttt{streamFilterAcc . streamFilter} (fusion)
 
 \begin{code}
 filterFilterAccPre     = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
@@ -243,9 +246,45 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  F  17: streamFilter . streamFilterAcc
+
+%% GRID CELL 17
+\item \texttt{streamFilter . streamFilterAcc} (fusion)
+
+\begin{code}
+filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
+prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
+\end{code}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  F  19: streamFilterAcc . streamFilterAcc
+
+%% GRID CELL 19
+\item \texttt{streamFilterAcc . streamFilterAcc} (fusion)
+
+\begin{code}
+filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
+filterAccFilterAccPost    =
+    streamFilterAcc
+        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
+        (acc1,acc2)
+        (\x (y,z) -> pred1 x y && pred2 x z)
+prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
+\end{code}
+
+\end{enumerate}
+
+The same is not true of combinations of \texttt{streamMap} and \texttt{streamScan}.
+
+TODO move in explanation of why scan isn't flexible here
+
+\begin{enumerate}[resume]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  F  10: streamMap . streamMap
 %% GRID CELL 10
-\item \texttt{streamMap} (fusion)
+\item \texttt{streamMap . streamMap} (fusion)
 
 \begin{code}
 mapMapPre :: Stream Char -> Stream Char
@@ -266,34 +305,6 @@ mapScanPost    = streamScan (flip (flip scanfn . next)) 0
 
 prop_mapScan :: Stream Int -> Bool
 prop_mapScan s = mapScanPre s == mapScanPost s
-\end{code}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%  F  17: streamFilter . streamFilterAcc
-
-%% GRID CELL 17
-\item \texttt{streamFilter . streamFilterAcc}
-
-\begin{code}
-filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
-filterAccFilterPost    = streamFilterAcc accfn1 acc1 (\x a -> pred1 x a && g x)
-prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
-\end{code}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%  F  19: streamFilterAcc . streamFilterAcc
-
-%% GRID CELL 19
-\item \texttt{streamFilterAcc} fusion
-
-\begin{code}
-filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
-filterAccFilterAccPost    =
-    streamFilterAcc
-        (\(x,y) v -> (accfn1 x v, if pred1 v x then accfn2 y v else y))
-        (acc1,acc2)
-        (\x (y,z) -> pred1 x y && pred2 x z)
-prop_filterAccFilterAcc s = filterAccFilterAccPre s == filterAccFilterAccPost s
 \end{code}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
