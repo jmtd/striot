@@ -6,6 +6,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{listings}
 \usepackage{enumitem}
+\usepackage{fullpage}
 
 % jmtd - convenience function to make code blocks more concise
 \ifdefined\MINTEDON
