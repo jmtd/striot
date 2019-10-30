@@ -45,7 +45,7 @@ import Test.Framework
 import Striot.FunctionalIoTtypes
 import Striot.FunctionalProcessing
 import Data.Maybe
-import Control.Arrow (>>>)
+import Control.Arrow ((>>>))
 
 \end{code}
 \end{comment}
