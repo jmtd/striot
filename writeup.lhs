@@ -542,6 +542,8 @@ pxxp_mergeMap s = mergeMapPre s == mergeMapPost s
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \end{enumerate}
+\newcounter{TotalRuleCount}
+\setcounter{TotalRuleCount}{\theenumi}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Combinations that yield no rules}
@@ -824,7 +826,7 @@ prop_windowMerge s = windowMergePre s == windowMergePost s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Summary}
 
-19 rules % RULECOUNT
+\arabic{TotalRuleCount} rules
 
 TODO any inversions? with or without caveats? (without caveats would probably
 be caught just through the systematic approach)
@@ -853,7 +855,7 @@ general it seems no useful rewrites exist for this category of pairs.
 
 There are 64 pairings of 8 functional operators. Systematically looking for
 ways to rewrite each pair whilst preserving the functional definition yielded
-20 rewrite rules that are applicable in any circumstance.
+\arabic{TotalRuleCount} rewrite rules that are applicable in any circumstance.
 
 % TODO recalc these numbers and re-incorporate:
 % 12 rules classified as applicable in any circumstance (total), a further 7 with caveats
