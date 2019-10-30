@@ -7,6 +7,7 @@
 \usepackage{listings}
 \usepackage{enumitem}
 \usepackage{fullpage}
+\usepackage{verbatim} % comment environment
 
 % jmtd - convenience function to make code blocks more concise
 \ifdefined\MINTEDON
@@ -24,6 +25,7 @@
 
 \tableofcontents
 
+\begin{comment}
 \section{Preamble}
 
 Boilerplate Haskell code that has to be at the start.
@@ -43,6 +45,7 @@ import Data.Maybe
 import Control.Arrow (>>>)
 
 \end{code}
+\end{comment}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -882,6 +885,7 @@ further 6 rewrite rules could be applied.
 - [[[HTF]]]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{comment}
 \section{Appendix}
 
 Utility Haskell code, required by the inline examples
@@ -932,5 +936,6 @@ scanfn  = counter
 jClean = map (\(Event _ _ (Just x)) -> x)
 
 \end{code}
+\end{comment}
 
 \end{document}
