@@ -148,8 +148,8 @@ Most of this exercise was conducted offline using pen and paper. For
 some of the more complex rewrites, we sketched an outline on paper and
 then attempted to encode the result in Haskell. Two Haskell libraries in
 particular proved very useful for testing our work:
-QuickCheck<<QuickCheck>> and
-the Haskell Testing Framework<<HTF>>. Using these tools, we attempted to
+QuickCheck\cite{Claessen:2000:QLT:351240.351266} and
+the Haskell Testing Framework\cite{HTF}. Using these tools, we attempted to
 construct a "property" that expressed the equivalence of the operator
 pair before and after our rewrite. QuickCheck then generates a set of
 randomly generated inputs and compares the output of each side of the
@@ -883,11 +883,10 @@ further 6 rewrite rules could be applied.
  * selection and encoding of additional information about streams for
    rewrite purposes
 
-[bibliography]
 \section{References}
 
-- [[[QuickCheck]]]
-- [[[HTF]]]
+\bibliographystyle{abbrv}
+\bibliography{references}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{comment}
