@@ -220,7 +220,7 @@ can be fused together.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% GRID CELL 1
 
-\item \texttt{streamFilter . streamFilter} (fusion)
+\item \texttt{streamFilter >>> streamFilter} (fusion)
 
 \begin{code}
 filterFilterPre     = streamFilter g . streamFilter f
@@ -233,7 +233,7 @@ prop_filterFilter2 s=
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  F  03: streamFilterAcc . streamFilter
 %% GRID CELL 3
-\item \texttt{streamFilterAcc . streamFilter} (fusion)
+\item \texttt{streamFilter >>> streamFilterAcc} (fusion)
 
 \begin{code}
 filterFilterAccPre     = streamFilterAcc accfn1 acc1 pred1 . streamFilter g
@@ -249,7 +249,7 @@ prop_filterFilterAcc s = filterFilterAccPre s == filterFilterAccPost s
 %%  F  17: streamFilter . streamFilterAcc
 
 %% GRID CELL 17
-\item \texttt{streamFilter . streamFilterAcc} (fusion)
+\item \texttt{streamFilterAcc >>> streamFilter} (fusion)
 
 \begin{code}
 filterAccFilterPre     = streamFilter g . streamFilterAcc accfn1 acc1 pred1
@@ -261,7 +261,7 @@ prop_filterAccFilter s = filterAccFilterPre s == filterAccFilterPost s
 %%  F  19: streamFilterAcc . streamFilterAcc
 
 %% GRID CELL 19
-\item \texttt{streamFilterAcc . streamFilterAcc} (fusion)
+\item \texttt{streamFilterAcc >>> streamFilterAcc} (fusion)
 
 \begin{code}
 filterAccFilterAccPre     = streamFilterAcc accfn2 acc2 pred2 . streamFilterAcc accfn1 acc1 pred1
@@ -284,7 +284,7 @@ TODO move in explanation of why scan isn't flexible here
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  F  10: streamMap . streamMap
 %% GRID CELL 10
-\item \texttt{streamMap . streamMap} (fusion)
+\item \texttt{streamMap >>> streamMap} (fusion)
 
 \begin{code}
 mapMapPre :: Stream Char -> Stream Char
@@ -297,7 +297,7 @@ prop_mapMap s = mapMapPre s == mapMapPost s
 %%     12: streamScan . streamMap
 
 %% GRID CELL 12
-\item \texttt{streamScan . streamMap} (fusion)
+\item \texttt{streamMap >>> streamScan} (fusion)
 
 \begin{code}
 mapScanPre     = streamScan scanfn 0 . streamMap next
@@ -311,7 +311,7 @@ prop_mapScan s = mapScanPre s == mapScanPost s
 %%  9  41: streamFilter . streamExpand
 
 %% GRID CELL 41
-\item \texttt{streamFilter . streamExpand}
+\item \texttt{streamExpand >>> streamFilter}
 
 \begin{code}
 expandFilterPre     = streamFilter f . streamExpand
@@ -322,9 +322,9 @@ prop_expandFilter s = expandFilterPre s == expandFilterPost s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  ?  45: streamWindow . streamExpand
 %% GRID CELL 45
-\item \texttt{streamWindow w . streamExpand . streamWindow w = id}
+\item \texttt{streamWindow w >>> streamExpand >>> streamWindow w = id}
 
-NOTE This is not a more generic \texttt{streamWindow . streamExpand}
+NOTE This is not a more generic \texttt{streamExpand >>> streamWindow}
 
 This is very specific to the WindowMaker in the streamWindow that is not in
 consideration here (whatever created the windows that are consumed by
@@ -371,7 +371,7 @@ pxxp_mergeMerge s = mergeMergePre s == mergeMergePost s
 %%  2  09: streamFilter . streamMap
 
 %% GRID CELL 9
-\item \texttt{streamFilter . streamMap}
+\item \texttt{streamMap >>> streamFilter}
 
 Where \texttt{next} is the example map function (chooses the next item in a sequence
 and wraps from the end to the start).
@@ -392,7 +392,7 @@ prop_mapFilter s = mapFilterPre s == mapFilterPost s
 %%  5  11: streamFilterAcc . streamMap
 
 %% GRID CELL 11
-\item \texttt{streamFilterAcc . streamMap}
+\item \texttt{streamMap >>> streamFilterAcc}
 
 \begin{code}
 mapFilterAccPre     = streamFilterAcc accfn 0 accpred . streamMap next
@@ -405,7 +405,7 @@ prop_mapFilterAcc s = mapFilterAccPre s == mapFilterAccPost s
 %%  X  13: streamWindow . streamMap
 
 %% GRID CELL 13
-\item \texttt{streamWindow . streamMap}
+\item \texttt{streamMap >>> streamWindow}
 
 \begin{code}
 mapWindowPre :: Stream Char -> Stream [Char]
@@ -417,7 +417,7 @@ prop_mapWindow s = mapWindowPre s == mapWindowPost s
 %%     15: streamJoin . streamMap
 
 %% GRID CELL 15
-\item \texttt{streamJoin . streamMap}
+\item \texttt{streamMap >>> streamJoin}
 
 \begin{code}
 mapJoinPre     = streamJoin sA . streamMap next
@@ -429,7 +429,7 @@ prop_mapJoin s = mapJoinPre s == mapJoinPost s
 %%  8  16  streamMerge . streamMap
 
 %% GRID CELL 16
-\item \texttt{streamMerge . streamMap}
+\item \texttt{streamMap >>> streamMerge}
 
 \begin{code}
 mapMergePre  s = streamMerge [(streamMap next sA),(streamMap next s)]
@@ -444,7 +444,7 @@ pxxp_mapMerge s = mapMergePre s == mapMergePost s
 TODO adapting from join . scan
 
 %% GRID CELL 31
-\item \texttt{streamJoin . streamScan} (total?)
+\item \texttt{streamScan >>> streamJoin} (total?)
 
 \begin{code}
 scanJoinPre     = streamJoin sA . streamScan counter 0
@@ -468,7 +468,7 @@ prop_scanJoin s = scanJoinPre s == scanJoinPost s
 %%  3  42: streamMap . streamExpand
 
 %% GRID CELL 42
-\item \texttt{streamMap . streamExpand}
+\item \texttt{streamExpand >>> streamMap}
 
    TODO consider the Event wrappers
 
@@ -483,7 +483,7 @@ prop_expandMap s = expandMapPre s == expandMapPost s
 %%  ?  44: streamScan . streamExpand
 
 %% GRID CELL 44
-\item \texttt{streamScan . streamExpand}
+\item \texttt{streamExpand >>> streamScan}
 
 TODO possibly not generalised (works for the streamScan 'counter' example)
 
@@ -532,7 +532,7 @@ prop_scanExpand2 s = scanExpandPre2 s == scanExpandPost2 s
 %%  4  46: streamExpand . streamExpand
 
 %% GRID CELL 46
-\item \texttt{streamExpand . streamExpand}
+\item \texttt{streamExpand >>> streamExpand}
 
 \begin{code}
 expandExpandPre     = streamExpand . streamExpand
@@ -545,7 +545,7 @@ prop_expandExpand s = expandExpandPre s == expandExpandPost s
 %%   7 58: streamMap . streamMerge
 
 %% GRID CELL 58
-\item \texttt{streamMap . streamMerge}
+\item \texttt{streamMerge >>> streamMap}
 
 \begin{code}
 mergeMapPre s  = streamMap isAscii $ streamMerge [sA, s]
@@ -571,7 +571,7 @@ TODO explanations for why the combinations are ruled out where possible
 
 %%  X1 02: streamMap . streamFilter
 
-02. \texttt{streamMap . streamFilter}
+02. \texttt{streamFilter >>> streamMap}
 
 In order to apply \texttt{streamFilter` after `streamMap} (with argument type
 $(a -> b)$), we need a means of converting the Events into the original type, i.e.,
@@ -579,7 +579,7 @@ $(a -> b)$), we need a means of converting the Events into the original type, i.
 
 %%  X1 04: streamScan . streamFilter
 %% GRID CELL 4
-04. \texttt{streamScan . streamFilter}
+04. \texttt{streamFilter >>> streamScan}
 
 Same reasoning as 2.
 
@@ -590,13 +590,13 @@ Same reasoning as 2.
 
 %%  X1 18: streamMap . streamFilterAcc
 %% GRID CELL 18
-18. \texttt{streamMap . streamFilterAcc}
+18. \texttt{streamFilterAcc >>> streamMap}
 
 Same reasoning as 2.
 
 %%  X  20: streamScan . streamFilterAcc
 %% GRID CELL 20
-20. \texttt{streamScan . streamFilterAcc}
+20. \texttt{streamFilterAcc >>> streamScan}
 
 Same reasoning as 2.
 
@@ -607,7 +607,7 @@ Same reasoning as 2.
 
 %%  X7  25: streamFilter . streamScan
 %% GRID CELL 25
-25. \texttt{streamFilter . streamScan}
+25. \texttt{streamScan >>> streamFilter}
 
 We can't compose the arguments from streamScan with the predicate from streamFilter
 and get the same results since we can't thread the result back in as per streamScan
@@ -615,20 +615,20 @@ and get the same results since we can't thread the result back in as per streamS
 
 %%  X9  26: streamMap . streamScan
 %% GRID CELL 26
-26. \texttt{streamMap . streamScan}
+26. \texttt{streamScan >>> streamMap}
 
 Not possible: the problem is the streamMap-arg-processed accumulator output is
 fed back in
 
 %%  X7  27: streamFilterAcc . streamScan
 %% GRID CELL 27
-27. \texttt{streamFilterAcc . streamScan}
+27. \texttt{streamScan >>> streamFilterAcc}
 
 As 25, above.
 
 %%  X6 28: streamScan . streamScan
 %% GRID CELL 28
-28. \texttt{streamScan . streamScan}
+28. \texttt{streamScan >>> streamScan}
 
 the problem is the accumulator of scan is not hidden (like filterAcc); it's
 the return value! so we can't easily hide our work
@@ -641,7 +641,7 @@ TODO this explanation is lacking
 
 %%  X3 38: streamExpand . streamWindow
 %% GRID CELL 38
-38. \texttt{streamExpand . streamWindow}
+38. \texttt{streamWindow >>> streamExpand}
 
 In terms of the value payload of a stream, an expand immediately after a window
 can eliminate both operators. However, from the perspective of the Event type
@@ -744,7 +744,7 @@ pxxp_expandMerge2 s = expandMergePre s == expandMergePost s
 %%  57 57: streamFilter . streamMerge
 
 %% GRID CELL 57
-\item \texttt{streamFilter . streamMerge}
+\item \texttt{streamMerge >>> streamFilter}
 
 Simply pushing the filters up to the streams that are the input to the merge
 will not preserve the precise order of events. This can be addressed with the
@@ -809,7 +809,7 @@ pxxp_mergeExpand2 s = mergeExpandPre s == mergeExpandPost s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  11 40: streamMerge . streamWindow
 %% GRID CELL 40
-\item \texttt{streamMerge . streamWindow}
+\item \texttt{streamWindow >>> streamMerge}
 
 TODO this is a very specific example. Can we always compose frob? Effectively
 we need to know how the WindowMaker works. So really this is not a "totally
