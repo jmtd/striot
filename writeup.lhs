@@ -1,3 +1,6 @@
+% A PDF of this document is occasionally uploaded to:
+%         https://jmtd.net/tmp/writeup.pdf
+
 % TODO - there's only 31 grid cell comments, there should be 64?
 
 % TODO - use >>> instead of '.' and consistently read LTR
