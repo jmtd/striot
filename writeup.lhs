@@ -27,10 +27,8 @@
 \tableofcontents
 
 \begin{comment}
-\section{Preamble}
 
-Boilerplate Haskell code that has to be at the start.
-Utility code is at the end. TODO just hide this bit from Latex.
+Boilerplate and utility code.
 
 \begin{code}
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
@@ -45,6 +43,48 @@ import Striot.FunctionalProcessing
 import Data.Maybe
 import Control.Arrow ((>>>))
 
+main = htfMain htf_thisModulesTests
+
+-- filter predicates
+f = (>= 'a')
+g = (<= 'z')
+
+-- example arguments for streamFilterAcc
+-- alternating values only
+accfn2 _ v = v
+acc2 = '\NUL'
+pred2 = (/=)
+
+-- increasing values only
+accfn1 _ v = v
+acc1 = '\NUL'
+pred1 = (>=)
+
+-- avoids a situation where pred/succ will fail on the smallest/largest Enum type
+next :: (Eq a, Bounded a, Enum a) => a -> a
+next a = if a == maxBound then minBound else succ a
+prev :: (Eq a, Bounded a, Enum a) => a -> a
+prev a = if a == minBound then maxBound else pred a
+
+-- test streams of characters
+-- XXX these are not infinite lists. Does that matter?
+sA = [Event 0 Nothing (Just i)|i<-['a'..]]
+sB = [Event 0 Nothing (Just i)|i<-['0'..]]
+sC = [Event 0 Nothing (Just i)|i<-['A'..]]
+sW = streamWindow (chop 2) sB
+sWW= streamWindow (chop 3) sW
+
+-- utility functions for mapFilterAcc
+accfn acc _ = acc+1
+accpred dat acc = even acc
+
+-- an example of a streamScan argument
+-- TODO better accumulator needed, one that does not ignore the value
+counter = \c v -> c+1
+scanfn  = counter
+
+-- for convenient interactive debugging 
+jClean = map (\(Event _ _ (Just x)) -> x)
 \end{code}
 \end{comment}
 
@@ -896,59 +936,5 @@ further 6 rewrite rules could be applied.
 
 \bibliographystyle{abbrv}
 \bibliography{references}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{comment}
-\section{Appendix}
-
-Utility Haskell code, required by the inline examples
-
-\begin{code}
-
-main = htfMain htf_thisModulesTests
-
--- filter predicates
-f = (>= 'a')
-g = (<= 'z')
-
--- example arguments for streamFilterAcc
--- alternating values only
-accfn2 _ v = v
-acc2 = '\NUL'
-pred2 = (/=)
-
--- increasing values only
-accfn1 _ v = v
-acc1 = '\NUL'
-pred1 = (>=)
-
--- avoids a situation where pred/succ will fail on the smallest/largest Enum type
-next :: (Eq a, Bounded a, Enum a) => a -> a
-next a = if a == maxBound then minBound else succ a
-prev :: (Eq a, Bounded a, Enum a) => a -> a
-prev a = if a == minBound then maxBound else pred a
-
--- test streams of characters
--- XXX these are not infinite lists. Does that matter?
-sA = [Event 0 Nothing (Just i)|i<-['a'..]]
-sB = [Event 0 Nothing (Just i)|i<-['0'..]]
-sC = [Event 0 Nothing (Just i)|i<-['A'..]]
-sW = streamWindow (chop 2) sB
-sWW= streamWindow (chop 3) sW
-
--- utility functions for mapFilterAcc
-accfn acc _ = acc+1
-accpred dat acc = even acc
-
--- an example of a streamScan argument
--- TODO better accumulator needed, one that does not ignore the value
-counter = \c v -> c+1
-scanfn  = counter
-
--- for convenient interactive debugging 
-jClean = map (\(Event _ _ (Just x)) -> x)
-
-\end{code}
-\end{comment}
 
 \end{document}
