@@ -117,24 +117,26 @@ from analysing the semantics of the operators.
 A \textit{Stream} is a list of \textit{Event} s. An \textit{Event} has an Id field and might include an
 iota of data, (a datum?) and a timestamp.
 
-\subsection{table of operators}
-
-    streamFilter    :: (a -> Bool) -> Stream a -> Stream a
-    streamMap       :: (a -> b) -> Stream a -> Stream b
-    streamFilterAcc :: (b -> a -> b) -> b -> (a -> b -> Bool) -> Stream a -> Stream a
-    streamScan      :: (b -> a -> b) -> b -> Stream a -> Stream b
-    streamWindow    :: Stream a -> Stream [a]
-    streamExpand    :: Stream [a] -> Stream a
-    streamMerge     :: [Stream a] -> Stream a
-    streamJoin      :: Stream a -> Stream b -> Stream (a,b)
-
-Ignoring the Stream-in, Stream-out parameters, the first four operators are
-unary and their parameter operates on the payload of the Stream,
-and not the Stream type itself.
-
-The second set of four operators operate directly on Streams.
-
 \section{Method}
+
+\begin{figure}[h]
+  \begin{center}
+    \begin{tabular}{ r | c | c | c | c | c | c | c | c }
+                   & filter & map & filterAcc & scan & window & expand & join & merge \\ \hline
+        filter     & 1      & -   & 3         & -    & -      & -      & -    & 8 \\ \hline
+        map        & 9      & 10  & 11        & 12   & 13     & -      & 15   & 16\\ \hline
+        filterAcc  & 17     & -   & 18        & -    & -      & -      & -    & - \\ \hline
+        scan       & -      & -   & -         & -    & -      & -      & 31   &   \\ \hline
+        window     & -      & -   &           &      & -      & -      & -    & 40\\ \hline
+        expand     & 41     & 42  & -         & 44   & 45     & 46     & -    & 48\\ \hline
+        join       & -      & -   & -         & -    & -      & -      & -    & - \\ \hline
+        merge      & 57     & 58  & -         & -    & -      & 62     & -    & 64
+    \end{tabular}
+  \end{center}
+  \caption{Operator pairs that yielded rewrite rules.
+    "-" indicates no rule was discovered}
+  \label{tableOperatorPairs}
+\end{figure}
 
 We constructed a list of operator pairs and considered each pair in
 sequence in order to systematically explore all possible combinations.
