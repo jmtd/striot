@@ -9,6 +9,7 @@
 \usepackage{enumitem}
 \usepackage{fullpage}
 \usepackage{verbatim} % comment environment
+\usepackage[colorlinks=true]{hyperref}
 
 % jmtd - convenience function to make code blocks more concise
 \ifdefined\MINTEDON
@@ -263,7 +264,7 @@ can be fused together.
 \item \texttt{streamFilter >>> streamFilter} (fusion)
 
 \begin{code}
-filterFilterPre     = streamFilter g . streamFilter f
+filterFilterPre     = streamFilter f >>> streamFilter g
 filterFilterPost    = streamFilter (\x -> f x && g x)
 prop_filterFilter s = filterFilterPre s == filterFilterPost s
 prop_filterFilter2 s=
@@ -349,7 +350,7 @@ prop_mapScan s = mapScanPre s == mapScanPost s
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  9  41: streamFilter . streamExpand
-
+% TODO why is this self-evidently useful?
 %% GRID CELL 41
 \item \texttt{streamExpand >>> streamFilter}
 
