@@ -33,8 +33,9 @@ myStyle = Style
     }
 
 -- escape a string, suitable for inclusion in a .dot file
+-- XXX handle '\\' in input' (escape it again)
 escape [] = []
-escape (x:xs) = if x == '"' then '\\':'"':(escape xs) else x:(escape xs)
+escape (x:xs) = if x `elem` "\\\"" then '\\':x:(escape xs) else x:(escape xs)
 
 -- test data
 --source x = "do\n    threadDelay (1000*1000)\n    putStrLn \"sending '"++x++"'\"\n    return \""++x++"\""
