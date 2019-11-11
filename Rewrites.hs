@@ -171,6 +171,20 @@ mapFusePre = Vertex (StreamVertex 0 Map ["show"] "Int" "String") `Connect`
 mapFusePost = Vertex $ StreamVertex 0 Map ["(let f = (show); g = (length) in (f >>> g))"] "Int" "Int"
 test_mapFuse = assertEqual (applyRule mapFuse mapFusePre) mapFusePost
 
+-- streamMap >>> streamScan --------------------------------------------------
+
+mapScan :: RewriteRule
+mapScan (Connect (Vertex v1@(StreamVertex i Map (f:_) t1 _))
+                 (Vertex v2@(StreamVertex _ Scan (g:a:_) _ t2))) =
+    let v = StreamVertex i Scan ["(let f = ("++f++"); g = ("++g++") in (flip (flip f >>> g)))", a] t1 t2
+    in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+
+mapScanPre = Vertex (StreamVertex 1 Map ["f"] "Int" "Int") `Connect`
+    Vertex (StreamVertex 2 Scan ["g","a"] "Int" "Int")
+mapScanPost = Vertex $
+    StreamVertex 1 Scan ["(let f = (f); g = (g) in (flip (flip f >>> g)))", "a"] "Int" "Int"
+test_mapScan = assertEqual (applyRule mapScan mapScanPre) mapScanPost
+
 -- utility/boilerplate -------------------------------------------------------
 
 pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
