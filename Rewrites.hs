@@ -135,6 +135,29 @@ filterAccFilterPost = Vertex $
 test_filterAccFilter = assertEqual (applyRule filterAccFilter filterAccFilterPre)
     filterAccFilterPost
 
+-- streamFilterAcc >>> streamFilterAcc ---------------------------------------
+
+filterAccFilterAcc :: RewriteRule
+filterAccFilterAcc (Connect (Vertex v1@(StreamVertex i FilterAcc (f:a:p:_) ty _))
+                            (Vertex v2@(StreamVertex _ FilterAcc (g:b:q:_) _ _))) =
+    let f' = "(let f = ("++f++"); p = ("++p++"); g = ("++g++") in\
+             \ \\ (a,b) v -> (f a v, if p v a then g b v else b))"
+        a' = "("++a++","++b++")"
+        q' = "(let p = ("++p++"); q = ("++q++") in \\v (y,z) -> p v y && q v z)"
+        v  = StreamVertex i FilterAcc [f',a',q'] ty ty
+    in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+
+filterAccFilterAccPre  = Vertex (StreamVertex 1 FilterAcc ["f","a","p"] "Int" "Int")
+                         `Connect`
+                         Vertex (StreamVertex 2 FilterAcc ["g","b","q"] "Int" "Int")
+filterAccFilterAccPost = Vertex $
+    StreamVertex 1 FilterAcc [ "(let f = (f); p = (p); g = (g) in \\ (a,b) v -> (f a v, if p v a then g b v else b))"
+                             , "(a,b)"
+                             , "(let p = (p); q = (q) in \\v (y,z) -> p v y && q v z)"
+                             ] "Int" "Int"
+test_filterAccFilterAcc = assertEqual (applyRule filterAccFilterAcc filterAccFilterAccPre)
+    filterAccFilterAccPost
+
 -- utility/boilerplate -------------------------------------------------------
 
 pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
