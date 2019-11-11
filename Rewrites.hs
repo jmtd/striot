@@ -123,6 +123,7 @@ filterAccFilter (Connect (Vertex v1@(StreamVertex i FilterAcc (f:a:p:_) ty _))
     let p' = "(let p = ("++p++"); q = ("++q++") in \\v a -> p v a && q v)"
         v  = StreamVertex i FilterAcc [f,a,p'] ty ty
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+filterAccFilter _ = Nothing
 
 filterAccFilterPre  = Vertex (StreamVertex 1 FilterAcc ["f","a","p"] "Int" "Int")
                       `Connect`
@@ -146,6 +147,7 @@ filterAccFilterAcc (Connect (Vertex v1@(StreamVertex i FilterAcc (f:a:p:_) ty _)
         q' = "(let p = ("++p++"); q = ("++q++") in \\v (y,z) -> p v y && q v z)"
         v  = StreamVertex i FilterAcc [f',a',q'] ty ty
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+filterAccFilterAcc _ = Nothing
 
 filterAccFilterAccPre  = Vertex (StreamVertex 1 FilterAcc ["f","a","p"] "Int" "Int")
                          `Connect`
@@ -165,6 +167,7 @@ mapFuse (Connect (Vertex v1@(StreamVertex i Map (f:_) t1 _))
                  (Vertex v2@(StreamVertex _ Map (g:_) _ t2))) =
     let v = StreamVertex i Map ["(let f = ("++f++"); g = ("++g++") in (f >>> g))"] t1 t2
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+mapFuse _ = Nothing
 
 mapFusePre = Vertex (StreamVertex 0 Map ["show"] "Int" "String") `Connect`
   Vertex (StreamVertex 1 Map ["length"] "String" "Int")
@@ -178,6 +181,7 @@ mapScan (Connect (Vertex v1@(StreamVertex i Map (f:_) t1 _))
                  (Vertex v2@(StreamVertex _ Scan (g:a:_) _ t2))) =
     let v = StreamVertex i Scan ["(let f = ("++f++"); g = ("++g++") in (flip (flip f >>> g)))", a] t1 t2
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+mapScan _ = Nothing
 
 mapScanPre = Vertex (StreamVertex 1 Map ["f"] "Int" "Int") `Connect`
     Vertex (StreamVertex 2 Scan ["g","a"] "Int" "Int")
