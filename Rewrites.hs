@@ -158,6 +158,19 @@ filterAccFilterAccPost = Vertex $
 test_filterAccFilterAcc = assertEqual (applyRule filterAccFilterAcc filterAccFilterAccPre)
     filterAccFilterAccPost
 
+-- streamMap >>> streamMap ---------------------------------------------------
+
+mapFuse :: RewriteRule
+mapFuse (Connect (Vertex v1@(StreamVertex i Map (f:_) t1 _))
+                 (Vertex v2@(StreamVertex _ Map (g:_) _ t2))) =
+    let v = StreamVertex i Map ["(let f = ("++f++"); g = ("++g++") in (f >>> g))"] t1 t2
+    in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+
+mapFusePre = Vertex (StreamVertex 0 Map ["show"] "Int" "String") `Connect`
+  Vertex (StreamVertex 1 Map ["length"] "String" "Int")
+mapFusePost = Vertex $ StreamVertex 0 Map ["(let f = (show); g = (length) in (f >>> g))"] "Int" "Int"
+test_mapFuse = assertEqual (applyRule mapFuse mapFusePre) mapFusePost
+
 -- utility/boilerplate -------------------------------------------------------
 
 pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
