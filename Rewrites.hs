@@ -115,6 +115,26 @@ filterFilterAccPost = Vertex $
 test_filterFilterAcc = assertEqual (applyRule filterFilterAcc filterFilterAccPre)
     filterFilterAccPost
 
+-- streamFilterAcc >>> streamFilter ------------------------------------------
+
+filterAccFilter :: RewriteRule
+filterAccFilter (Connect (Vertex v1@(StreamVertex i FilterAcc (f:a:p:_) ty _))
+                         (Vertex v2@(StreamVertex _ Filter (q:_) _ _))) =
+    let p' = "(let p = ("++p++"); q = ("++q++") in \\v a -> p v a && q v)"
+        v  = StreamVertex i FilterAcc [f,a,p'] ty ty
+    in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+
+filterAccFilterPre  = Vertex (StreamVertex 1 FilterAcc ["f","a","p"] "Int" "Int")
+                      `Connect`
+                      Vertex (StreamVertex 2 Filter ["q"] "Int" "Int")
+filterAccFilterPost = Vertex $
+    StreamVertex 1 FilterAcc [ "f", "a"
+                             , "(let p = (p); q = (q) in \\v a -> p v a && q v)"
+                             ] "Int" "Int"
+
+test_filterAccFilter = assertEqual (applyRule filterAccFilter filterAccFilterPre)
+    filterAccFilterPost
+
 -- utility/boilerplate -------------------------------------------------------
 
 pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
