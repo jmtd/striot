@@ -9,18 +9,6 @@ import VizGraph
 
 -- attempt to encode a graph transformation!
 
--- utility/boilerplate -------------------------------------------------------
-
-pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
-    where wrap x y z = y ++ x ++ z
-
-ppp :: StreamGraph -> String
-ppp = foldg "()" (show) (wrap " + ") (wrap " * ")
-    where wrap x y z = y ++ x ++ z
-          bracket x = "("++x++")"
-
-main = htfMain htf_Main_thisModulesTests
-
 -- applying encoded rules and their resulting ReWriteOps ----------------------
 
 type RewriteRule = StreamGraph -> Maybe (StreamGraph -> StreamGraph)
@@ -50,7 +38,8 @@ firstMatch f g = let r = f g in
 
 -- example encoded rules -----------------------------------------------------
 
--- streamFilter f . streamFilter g = streamFilter (\x -> f x && g x)
+-- streamFilter f . streamFilter g = streamFilter (\x -> f x && g x) ---------
+
 filterFuse :: RewriteRule
 filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:_) ty _))
                     (Vertex b@(StreamVertex _ Filter (q:_) _ _))) =
@@ -60,7 +49,17 @@ filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:_) ty _))
 
 filterFuse _ = Nothing
 
--- streamFilter p . streamMap f = streamMap f . streamFilter (p . f)
+f3 = Vertex $ StreamVertex 0 Filter ["(>3)"] "String" "String"
+f4 = Vertex $ StreamVertex 1 Filter ["(<5)"] "String" "String"
+filterFusePre = Connect f3 f4
+filterFusePost = Vertex $ StreamVertex 0 Filter
+    ["\\p q x -> p x && q x","(>3)","(<5)"] "String" "String"
+
+test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
+    filterFusePost
+
+-- streamFilter p . streamMap f = streamMap f . streamFilter (p . f) ---------
+
 mapFilter :: RewriteRule
 mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
                    (Vertex f1@(StreamVertex j Filter (p:ps) _ _))) =
@@ -69,20 +68,6 @@ mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
     in  Just (replaceVertex f1 m . replaceVertex m f2)
 
 mapFilter _ = Nothing
-
--- streamFilter p >>> streamFilterAcc f a q ==
--- streamFilterAcc (\a v -> if p v then f a v else a) a (\v a -> p v && q v a)
-filterFilterAcc :: RewriteRule
-filterFilterAcc (Connect (Vertex v1@(StreamVertex i Filter (p:_) ty _))
-                         (Vertex v2@(StreamVertex _ FilterAcc (f:a:q:_) _ _))) =
-    let v3 = StreamVertex i FilterAcc [ "(let p = ("++p++"); f = ("++f++") in \\a v -> if p v then f a v else a)"
-                                      , a
-                                      , "(let p = ("++p++"); q = ("++q++") in \\v a -> p v && q v a)"
-                                      ] ty ty
-    in  Just (removeEdge v3 v3 . mergeVertices (`elem` [v1,v2]) v3)
-filterFilterAcc _ = Nothing
-
--- tests ---------------------------------------------------------------------
 
 m1 = Vertex $ StreamVertex 0 Map ["show"] "Int" "String"
 f1 = Vertex $ StreamVertex 1 Filter ["\\x -> length x <3"] "String" "String"
@@ -106,14 +91,17 @@ mapFilterSub2 = Empty `Overlay` Empty `Overlay` mapFilterPre `Overlay` mapFilter
 test_mapfilter4 = assertEqual mapFilterPost
     $ applyRule mapFilter mapFilterSub2
 
-f3 = Vertex $ StreamVertex 0 Filter ["(>3)"] "String" "String"
-f4 = Vertex $ StreamVertex 1 Filter ["(<5)"] "String" "String"
-filterFusePre = Connect f3 f4
-filterFusePost = Vertex $ StreamVertex 0 Filter
-    ["\\p q x -> p x && q x","(>3)","(<5)"] "String" "String"
+-- streamFilter >>> streamFilterAcc f a q ------------------------------------
 
-test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
-    filterFusePost
+filterFilterAcc :: RewriteRule
+filterFilterAcc (Connect (Vertex v1@(StreamVertex i Filter (p:_) ty _))
+                         (Vertex v2@(StreamVertex _ FilterAcc (f:a:q:_) _ _))) =
+    let v3 = StreamVertex i FilterAcc [ "(let p = ("++p++"); f = ("++f++") in \\a v -> if p v then f a v else a)"
+                                      , a
+                                      , "(let p = ("++p++"); q = ("++q++") in \\v a -> p v && q v a)"
+                                      ] ty ty
+    in  Just (removeEdge v3 v3 . mergeVertices (`elem` [v1,v2]) v3)
+filterFilterAcc _ = Nothing
 
 filterFilterAccPre = Vertex (StreamVertex 3 Filter ["p"] "Int" "Int")
                      `Connect`
@@ -127,7 +115,17 @@ filterFilterAccPost = Vertex $
 test_filterFilterAcc = assertEqual (applyRule filterFilterAcc filterFilterAccPre)
     filterFilterAccPost
 
-------------------------------------------------------------------------------
+-- utility/boilerplate -------------------------------------------------------
+
+pp = foldg "()" (show.operator) (wrap " + ") (wrap " * ")
+    where wrap x y z = y ++ x ++ z
+
+ppp :: StreamGraph -> String
+ppp = foldg "()" (show) (wrap " + ") (wrap " * ")
+    where wrap x y z = y ++ x ++ z
+          bracket x = "("++x++")"
+
+main = htfMain htf_Main_thisModulesTests
 
 display1 = displayGraph $ taxiQ1
 display2 = displayGraph $ applyRule filterFuse taxiQ1
