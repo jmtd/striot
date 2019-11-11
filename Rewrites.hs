@@ -70,6 +70,18 @@ mapFilter (Connect (Vertex m@(StreamVertex i Map (f:fs) intype _))
 
 mapFilter _ = Nothing
 
+-- streamFilter p >>> streamFilterAcc f a q ==
+-- streamFilterAcc (\a v -> if p v then f a v else a) a (\v a -> p v && q v a)
+filterFilterAcc :: RewriteRule
+filterFilterAcc (Connect (Vertex v1@(StreamVertex i Filter (p:_) ty _))
+                         (Vertex v2@(StreamVertex _ FilterAcc (f:a:q:_) _ _))) =
+    let v3 = StreamVertex i FilterAcc [ "(let p = ("++p++"); f = ("++f++") in \\a v -> if p v then f a v else a)"
+                                      , a
+                                      , "(let p = ("++p++"); q = ("++q++") in \\v a -> p v && q v a)"
+                                      ] ty ty
+    in  Just (removeEdge v3 v3 . mergeVertices (`elem` [v1,v2]) v3)
+filterFilterAcc _ = Nothing
+
 -- tests ---------------------------------------------------------------------
 
 m1 = Vertex $ StreamVertex 0 Map ["show"] "Int" "String"
@@ -103,7 +115,20 @@ filterFusePost = Vertex $ StreamVertex 0 Filter
 test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
     filterFusePost
 
+filterFilterAccPre = Vertex (StreamVertex 3 Filter ["p"] "Int" "Int")
+                     `Connect`
+                     Vertex (StreamVertex 2 FilterAcc ["f", "a", "q"] "Int" "Int")
+filterFilterAccPost = Vertex $
+  StreamVertex 3 FilterAcc [ "(let p = (p); f = (f) in \\a v -> if p v then f a v else a)"
+                           , "a"
+                           , "(let p = (p); q = (q) in \\v a -> p v && q v a)"
+                           ] "Int" "Int"
+
+test_filterFilterAcc = assertEqual (applyRule filterFilterAcc filterFilterAccPre)
+    filterFilterAccPost
+
+------------------------------------------------------------------------------
+
 display1 = displayGraph $ taxiQ1
 display2 = displayGraph $ applyRule filterFuse taxiQ1
 display3 = displayGraph $ applyRule mapFilter $ applyRule filterFuse taxiQ1
-
