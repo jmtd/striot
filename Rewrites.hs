@@ -15,26 +15,27 @@ type RewriteRule = StreamGraph -> Maybe (StreamGraph -> StreamGraph)
 
 applyRule :: RewriteRule -> StreamGraph -> StreamGraph
 applyRule f g =
-    let ops = firstMatch f g in
+    let ops = firstMatch g f in
     case ops of
         Nothing -> g
         Just f  -> f g
 
 -- recursively attempt to apply the rule to the graph, but stop
 -- as soon as we get a match
-firstMatch :: RewriteRule -> StreamGraph -> Maybe (StreamGraph -> StreamGraph)
-firstMatch f g = let r = f g in
+firstMatch :: StreamGraph -> RewriteRule -> Maybe (StreamGraph -> StreamGraph)
+firstMatch g f = let r = f g in
     case r of
         Just f    -> Just f
         otherwise -> case g of
             Empty       -> Nothing
             Vertex v    -> Nothing
-            Overlay a b -> case firstMatch f a of
+            Overlay a b -> case firstMatch a f of
                                 Just f  -> Just f
-                                Nothing -> firstMatch f b
-            Connect a b -> case firstMatch f a of
+                                Nothing -> firstMatch b f
+            Connect a b -> case firstMatch a f of
                                 Just f  -> Just f
-                                Nothing -> firstMatch f b
+                                Nothing -> firstMatch b f
+
 
 -- example encoded rules -----------------------------------------------------
 
