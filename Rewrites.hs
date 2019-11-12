@@ -2,9 +2,11 @@
 import Striot.CompileIoT
 import Algebra.Graph
 import Test.Framework hiding ((===))
+import Data.Maybe (catMaybes)
+import Data.Function ((&))
+import Data.List (nub)
 
 import TaxiGraph -- symlink to examples/taxi/generate.hs, provides taxiQ1
-
 import VizGraph
 
 -- attempt to encode a graph transformation!
@@ -36,6 +38,29 @@ firstMatch g f = let r = f g in
                                 Just f  -> Just f
                                 Nothing -> firstMatch b f
 
+-- thoughts about cost model
+-- higher is better
+costModel :: StreamGraph -> Int
+costModel = (*(-1)) . length . vertexList
+
+-- applies N rules to the SG, returns all rewritten rules
+-- (caller may wish to apply 'nub')
+applyRules :: Int -> StreamGraph -> [StreamGraph]
+applyRules n sg =
+        if   n < 1 then [sg]
+        else let
+             sgs = map ((&) sg) $ catMaybes $ map (firstMatch sg) rules
+             in    sg : sgs ++ (concat $ map (applyRules (n-1)) sgs)
+
+rules :: [RewriteRule]
+rules = [ filterFuse
+        , mapFilter
+        , filterFilterAcc
+        , filterAccFilter
+        , filterAccFilterAcc
+        , mapFuse
+        , mapScan
+        ]
 
 -- example encoded rules -----------------------------------------------------
 
