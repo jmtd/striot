@@ -38,7 +38,7 @@ firstMatch g f = case f g of
 costModel :: StreamGraph -> Int
 costModel = negate . length . vertexList
 
--- applies N rules to the SG, returns all rewritten rules
+-- N-bounded recursive rule traversal
 -- (caller may wish to apply 'nub')
 applyRules :: Int -> StreamGraph -> [StreamGraph]
 applyRules n sg =
