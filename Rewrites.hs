@@ -2,7 +2,7 @@
 import Striot.CompileIoT
 import Algebra.Graph
 import Test.Framework hiding ((===))
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Function ((&))
 import Data.List (nub)
 
@@ -16,17 +16,12 @@ import VizGraph
 type RewriteRule = StreamGraph -> Maybe (StreamGraph -> StreamGraph)
 
 applyRule :: RewriteRule -> StreamGraph -> StreamGraph
-applyRule f g =
-    let ops = firstMatch g f in
-    case ops of
-        Nothing -> g
-        Just f  -> f g
+applyRule f g = g & fromMaybe id (firstMatch g f)
 
 -- recursively attempt to apply the rule to the graph, but stop
 -- as soon as we get a match
 firstMatch :: StreamGraph -> RewriteRule -> Maybe (StreamGraph -> StreamGraph)
-firstMatch g f = let r = f g in
-    case r of
+firstMatch g f = case f g of
         Just f    -> Just f
         otherwise -> case g of
             Empty       -> Nothing
@@ -41,7 +36,7 @@ firstMatch g f = let r = f g in
 -- thoughts about cost model
 -- higher is better
 costModel :: StreamGraph -> Int
-costModel = (*(-1)) . length . vertexList
+costModel = negate . length . vertexList
 
 -- applies N rules to the SG, returns all rewritten rules
 -- (caller may wish to apply 'nub')
