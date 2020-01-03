@@ -363,7 +363,7 @@ prop_expandFilter s = expandFilterPre s == expandFilterPost s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  ?  45: streamWindow . streamExpand
 %% GRID CELL 45
-\item \texttt{streamWindow w >>> streamExpand >>> streamWindow w = id}
+\item \texttt{streamWindow w >>> streamExpand >>> streamWindow w = streamWindow w}
 
 NOTE This is not a more generic \texttt{streamExpand >>> streamWindow}
 
@@ -372,14 +372,14 @@ consideration here (whatever created the windows that are consumed by
 streamExpand.). So it's sooo specific I think this is ruled out.
 
 \begin{code}
-expandWindowPre1 n= streamWindow (chop n) . streamExpand
-expandWindowPost1 = id
+expandWindowPre1 n= streamWindow (chop n) . streamExpand . streamWindow (chop n)
+expandWindowPost1 n= streamWindow (chop n)
 
 -- XXX it would be nice to use quickCheck to choose a window size, but we need
 -- to limit it to very small numbers (<10 or so) and that's tricky to specify;
 -- and HTF does not support QuickCheck's guard scheme n < 10 ==> ...
 prop_expandWindow1 :: Stream Char -> Bool
-prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 w
+prop_expandWindow1 s = expandWindowPre1 2 w == expandWindowPost1 2 w
     where w = streamWindow (chop 2) s
 \end{code}
 
