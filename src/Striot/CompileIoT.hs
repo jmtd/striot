@@ -1,53 +1,26 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module Striot.CompileIoT ( StreamGraph(..)
-                         , StreamVertex(..)
-                         , StreamOperator(..)
-                         , createPartitions
+module Striot.CompileIoT ( createPartitions
                          , generateCode
+                         , GenerateOpts(..)
+                         , defaultOpts
                          , PartitionMap
+                         , writePart
+                         , genDockerfile
+                         , partitionGraph
+                         , simpleStream
+
                          , htf_thisModulesTests
                          ) where
 
 import Data.List (intercalate)
 import Algebra.Graph
 import Test.Framework
+import System.FilePath ((</>))
+import System.Directory (createDirectoryIfMissing)
 
-data StreamOperator = Map
-                    | Filter
-                    | Expand
-                    | Window
-                    | Merge
-                    | Join
-                    | Scan
-                    | FilterAcc
-                    | Source
-                    | Sink
-                    deriving (Ord,Eq)
-
-instance Show StreamOperator where
-    show Map             = "streamMap"
-    show Filter          = "streamFilter"
-    show Window          = "streamWindow"
-    show Merge           = "streamMerge"
-    show Join            = "streamJoin"
-    show Scan            = "streamScan"
-    show FilterAcc       = "streamFilterAcc"
-    show Expand          = "streamExpand"
-    show Source          = "streamSource"
-    show Sink            = "streamSink"
-
--- Id needed for uniquely identifying a vertex. (Is there a nicer way?)
-data StreamVertex = StreamVertex
-    { vertexId   :: Int
-    , operator   :: StreamOperator
-    , parameters :: [String] -- XXX strings of code. From CompileIoT. Variable length e.g.FilterAcc takes 3 (?)
-    , intype     :: String
-    , outtype    :: String
-    } deriving (Eq,Show)
-
-instance Ord StreamVertex where
-    compare (StreamVertex x _ _ _ _) (StreamVertex y _ _ _ _) = compare x y
+import Striot.StreamGraph
+import Striot.LogicalOptimiser
 
 ------------------------------------------------------------------------------
 -- StreamGraph Partitioning
@@ -71,7 +44,6 @@ createPartitions g (p:ps) = ((overlay vs es):tailParts, cutEdges `overlay` tailC
 unPartition :: ([Graph StreamVertex], Graph StreamVertex) -> Graph StreamVertex
 unPartition (a,b) = overlay b $ foldl overlay Empty a
 
-type StreamGraph = Graph StreamVertex
 
 ------------------------------------------------------------------------------
 -- Code generation from StreamGraph definitions
@@ -91,13 +63,30 @@ type StreamGraph = Graph StreamVertex
         passes some kind of connectedness test?
 -}
 
-generateCode :: StreamGraph -> PartitionMap -> [String] -> [String]
-generateCode sg pm imports = generateCode' (createPartitions sg pm) imports
+data GenerateOpts = GenerateOpts
+    { imports   :: [String]     -- list of import statements to add to generated files
+    , packages  :: [String]     -- list of Cabal packages to install within containers
+    , preSource :: Maybe String -- code to run prior to starting nodeSource
+    , rewrite   :: Bool         -- should each partition be logically optimised?
+    }
 
-generateCode' :: ([StreamGraph], StreamGraph) -> [String] -> [String]
-generateCode' (sgs,cuts) imports = let
-                  enumeratedParts = zip [1..] sgs
-                  in map (generateCodeFromStreamGraph imports enumeratedParts cuts) enumeratedParts
+defaultOpts = GenerateOpts
+    { imports   = ["Striot.FunctionalIoTtypes", "Striot.FunctionalProcessing", "Striot.Nodes", "Control.Concurrent"]
+    , packages  = []
+    , preSource = Nothing
+    , rewrite   = True
+    }
+
+generateCode :: StreamGraph -> PartitionMap -> GenerateOpts -> [String]
+generateCode sg pm opts = generateCode' (createPartitions sg pm) opts
+
+generateCode' :: ([StreamGraph], StreamGraph) -> GenerateOpts -> [String]
+generateCode' (sgs,cuts) opts = let
+                  sgs' = if   rewrite opts
+                         then map optimise sgs
+                         else sgs
+                  enumeratedParts = zip [1..] sgs'
+                  in map (generateCodeFromStreamGraph opts enumeratedParts cuts) enumeratedParts
 
 data NodeType = NodeSource | NodeSink | NodeLink deriving (Show)
 
@@ -110,8 +99,8 @@ nodeType sg = if operator (head (vertexList sg)) == Source
 
 -- vertexList outputs *sorted*. That corresponds to the Id value for
 -- our StreamVertex type
-generateCodeFromStreamGraph :: [String] -> [(Integer, StreamGraph)] -> StreamGraph -> (Integer,StreamGraph) -> String
-generateCodeFromStreamGraph imports parts cuts (partId,sg) = intercalate "\n" $
+generateCodeFromStreamGraph :: GenerateOpts -> [(Integer, StreamGraph)] -> StreamGraph -> (Integer,StreamGraph) -> String
+generateCodeFromStreamGraph opts parts cuts (partId,sg) = intercalate "\n" $
     nodeId : -- convenience comment labelling the node/partition ID
     imports' ++
     (possibleSrcSinkFn sg) :
@@ -126,12 +115,12 @@ generateCodeFromStreamGraph imports parts cuts (partId,sg) = intercalate "\n" $
         sgTypeSignature = "streamGraphFn ::"++(concat $ take valence $ repeat $ " Stream "++(inType sg)++" ->")++" Stream "++(outType sg)
         sgIntro = "streamGraphFn "++sgArgs++" = let"
         sgArgs = unwords $ map (('n':).show) [1..valence]
-        imports' = (map ("import "++) imports) ++ ["\n"]
+        imports' = (map ("import "++) (imports opts)) ++ ["\n"]
         lastIdentifier = 'n':(show $ (length intVerts) + valence)
         intVerts= filter (\x-> not $ operator x `elem` [Source,Sink]) $ vertexList sg
         valence = partValence sg cuts
         nodeFn sg = case (nodeType sg) of
-            NodeSource -> generateNodeSrc partId (connectNodeId sg parts cuts)
+            NodeSource -> generateNodeSrc partId (connectNodeId sg parts cuts) opts
             NodeLink   -> generateNodeLink (partId + 1)
             NodeSink   -> generateNodeSink valence
         possibleSrcSinkFn sg = case (nodeType sg) of
@@ -195,12 +184,18 @@ generateNodeLink n = "main = nodeLink streamGraphFn \"9001\" \"node"++(show n)++
 
 -- warts:
 --  we accept a list of onward nodes but nodeSource only accepts one anyway
-generateNodeSrc :: Integer -> [Integer] -> String
-generateNodeSrc partId nodes = let
+generateNodeSrc :: Integer -> [Integer] -> GenerateOpts -> String
+generateNodeSrc partId nodes opts = let
     node = head nodes
     host = "node" ++ (show node)
     port = 9001 + partId -1 -- XXX Unlikely to always be correct
-    in "main = nodeSource src1 streamGraphFn \""++host++"\" \""++(show port)++"\""
+    pref = case preSource opts of
+       Nothing -> ""
+       Just f  -> f
+
+    in "main = do\n\
+\       "++pref++"\n\
+\       nodeSource src1 streamGraphFn \""++host++"\" \""++(show port)++"\""
 
 generateNodeSink :: Int -> String
 generateNodeSink v = case v of
@@ -257,27 +252,48 @@ test_reform_s0 = assertEqual s0 (unPartition $ createPartitions s0 [[0],[1]])
 test_reform_s1 = assertEqual s1 (unPartition $ createPartitions s1 [[0,1],[2]])
 test_reform_s1_2 = assertEqual s1 (unPartition $ createPartitions s1 [[0],[1,2]])
 
+genDockerfile listen opts = 
+    let pkgs = packages opts in concat
+    [ "FROM striot/striot-base:latest\n"
+    , "WORKDIR /opt/node\n"
+    , "COPY . /opt/node\n"
+    , if pkgs /= [] then "RUN cabal install " ++ (intercalate " " pkgs) else ""
+    , "\n"
+    , "RUN ghc node.hs\n"
+    , if listen then "EXPOSE 9001\n" else ""
+    , "CMD /opt/node/node\n"
+    ]
+
+-- XXX rename
+writePart :: GenerateOpts -> (Int, String) -> IO ()
+writePart opts (x,y) = let
+    dockerfile = genDockerfile True opts
+    bn = "node" ++ (show x)
+    fn = bn </> "node.hs"
+    in do
+        createDirectoryIfMissing True bn
+        writeFile (bn </> "Dockerfile") dockerfile
+        writeFile fn y
+
+-- a very high level function for using the Partitioner
+partitionGraph :: StreamGraph -> PartitionMap -> GenerateOpts -> IO ()
+partitionGraph graph partitions opts =
+    mapM_ (writePart opts) $ zip [1..] $ generateCode graph partitions opts
+
+simpleStream :: [(StreamOperator, [String], String)] -> Graph StreamVertex
+simpleStream tupes = path lst
+
+    where
+        intypes = "IO ()" : (map (\(_,_,ty) -> ty) (init tupes))
+        tupes3 = zip3 [1..] intypes tupes
+        lst = map (\ (i,intype,(op,params,outtype)) ->
+            StreamVertex i op params intype outtype) tupes3
+
 ------------------------------------------------------------------------------
--- quickcheck experiment
+-- logical optimisation
 
-instance Arbitrary StreamOperator where
-    arbitrary = elements [ Map , Filter , Expand , Window , Merge , Join , Scan
-                         , FilterAcc , Source , Sink ]
-
-instance Arbitrary StreamVertex where
-    arbitrary = do
-        vertexId <- arbitrary
-        operator <- arbitrary
-        let parameters = []
-            intype = "String"
-            outtype = "String"
-            in
-                return $ StreamVertex vertexId operator parameters intype outtype
-
-streamgraph :: Gen StreamGraph
-streamgraph = sized streamgraph'
-streamgraph' 0 = return g where g = empty :: StreamGraph
-streamgraph' n | n>0 = do
-    v <- arbitrary
-    t <- streamgraph' (n-1)
-    return $ connect (vertex v) t
+optimise :: StreamGraph -> StreamGraph
+optimise sg = let
+    sgs  = applyRules 5 sg
+    best = snd $ maximum $ map (\g -> (costModel g, g) ) sgs
+    in best

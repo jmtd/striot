@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Striot.Nodes ( nodeSink
                     , nodeSink2
                     , nodeLink
@@ -5,230 +6,259 @@ module Striot.Nodes ( nodeSink
                     , nodeSource
                     ) where
 
-import           Control.Concurrent
-import           Control.Concurrent.Chan.Unagi as U
-import           Control.Monad                 (forever, when)
-import           Data.Aeson
-import qualified Data.ByteString                as B
-import qualified Data.ByteString.Char8          as BC (putStrLn)
-import qualified Data.ByteString.Lazy.Char8     as BLC (hPutStrLn, putStrLn)
+import           Control.Concurrent                            (forkFinally)
+import           Control.Concurrent.Async                      (async)
+import           Control.Concurrent.Chan.Unagi.Bounded         as U
+import qualified Control.Exception                             as E (bracket)
+import           Control.Monad                                 (forever, unless,
+                                                                when)
+import qualified Data.ByteString                               as B (ByteString,
+                                                                     length,
+                                                                     null)
 import           Data.Maybe
-import           Data.Time                      (getCurrentTime)
+import           Data.Store                                    (Store)
+import qualified Data.Store.Streaming                          as SS
+import           Data.Text                                     as T (pack)
+import           Data.Time                                     (getCurrentTime)
 import           Network.Socket
+import           Network.Socket.ByteString
 import           Striot.FunctionalIoTtypes
 import           System.IO
+import           System.IO.ByteBuffer                          as BB
 import           System.IO.Unsafe
+import           System.Metrics.Prometheus.Concurrent.Registry as PR (new, registerCounter,
+                                                                      registerGauge,
+                                                                      sample)
+import           System.Metrics.Prometheus.Http.Scrape         (serveHttpTextMetrics)
+import           System.Metrics.Prometheus.Metric.Counter      as PC (Counter,
+                                                                      add, inc)
+import           System.Metrics.Prometheus.Metric.Gauge        as PG (Gauge,
+                                                                      dec, inc)
+import           System.Metrics.Prometheus.MetricId            (addLabel)
+
+
+data Metrics = Metrics { _ingressConn   :: Gauge
+                       , _ingressBytes  :: Counter
+                       , _ingressEvents :: Counter
+                       , _egressConn    :: Gauge
+                       , _egressBytes   :: Counter
+                       , _egressEvents  :: Counter }
 
 
 --- SINK FUNCTIONS ---
 
-nodeSink :: (FromJSON alpha, ToJSON beta) => (Stream alpha -> Stream beta) -> (Stream beta -> IO ()) -> ServiceName -> IO ()
-nodeSink streamGraph iofn portNumInput1 = withSocketsDo $ do
-    sock <- listenSocket portNumInput1
+nodeSink :: (Store alpha, Store beta)
+         => (Stream alpha -> Stream beta)
+         -> (Stream beta -> IO ())
+         -> ServiceName
+         -> IO ()
+nodeSink streamOp iofn inputPort = do
+    sock <- listenSocket inputPort
+    metrics <- startPrometheus "node-sink"
     putStrLn "Starting server ..."
-    hFlush stdout
-    nodeSink' sock streamGraph iofn
-
-
-nodeSink' :: (FromJSON alpha, ToJSON beta) => Socket -> (Stream alpha -> Stream beta) -> (Stream beta -> IO ()) -> IO ()
-nodeSink' sock streamOps iofn = do
-    stream <- processSocket sock
-    let result = streamOps stream
+    stream <- processSocket metrics sock
+    let result = streamOp stream
     iofn result
 
 
 -- A Sink with 2 inputs
-nodeSink2 :: (FromJSON alpha, FromJSON beta, ToJSON gamma) => (Stream alpha -> Stream beta -> Stream gamma) -> (Stream gamma -> IO ()) -> ServiceName -> ServiceName -> IO ()
-nodeSink2 streamGraph iofn portNumInput1 portNumInput2= withSocketsDo $ do
-    sock1 <- listenSocket portNumInput1
-    sock2 <- listenSocket portNumInput2
+nodeSink2 :: (Store alpha, Store beta, Store gamma)
+          => (Stream alpha -> Stream beta -> Stream gamma)
+          -> (Stream gamma -> IO ())
+          -> ServiceName
+          -> ServiceName
+          -> IO ()
+nodeSink2 streamOp iofn inputPort1 inputPort2 = do
+    sock1 <- listenSocket inputPort1
+    sock2 <- listenSocket inputPort2
+    metrics <- startPrometheus "node-sink"
     putStrLn "Starting server ..."
-    hFlush stdout
-    nodeSink2' sock1 sock2 streamGraph iofn
-
-
-nodeSink2' :: (FromJSON alpha, FromJSON beta, ToJSON gamma) => Socket -> Socket -> (Stream alpha -> Stream beta -> Stream gamma) -> (Stream gamma -> IO ()) -> IO ()
-nodeSink2' sock1 sock2 streamOps iofn = do
-    stream1 <- processSocket sock1
-    stream2 <- processSocket sock2
-    let result = streamOps stream1 stream2
+    stream1 <- processSocket metrics sock1
+    stream2 <- processSocket metrics sock2
+    let result = streamOp stream1 stream2
     iofn result
 
 
 --- LINK FUNCTIONS ---
 
-nodeLink :: (FromJSON alpha, ToJSON beta) => (Stream alpha -> Stream beta) -> ServiceName -> HostName -> ServiceName -> IO ()
-nodeLink streamGraph portNumInput1 hostNameOutput portNumOutput = withSocketsDo $ do
-    sockIn <- listenSocket portNumInput1
+nodeLink :: (Store alpha, Store beta)
+         => (Stream alpha -> Stream beta)
+         -> ServiceName
+         -> HostName
+         -> ServiceName
+         -> IO ()
+nodeLink streamOp inputPort outputHost outputPort = do
+    sock <- listenSocket inputPort
+    metrics <- startPrometheus "node-link"
     putStrLn "Starting link ..."
-    hFlush stdout
-    nodeLink' sockIn streamGraph hostNameOutput portNumOutput
-
-
-nodeLink' :: (FromJSON alpha, ToJSON beta) => Socket -> (Stream alpha -> Stream beta) -> HostName -> ServiceName -> IO ()
-nodeLink' sock streamOps host port = do
-    stream <- processSocket sock
-    let result = streamOps stream
-    sendStream result host port
+    stream <- processSocket metrics sock
+    let result = streamOp stream
+    sendStream result metrics outputHost outputPort
 
 
 -- A Link with 2 inputs
-nodeLink2 :: (FromJSON alpha, FromJSON beta, ToJSON gamma) => (Stream alpha -> Stream beta -> Stream gamma) -> ServiceName -> ServiceName -> HostName -> ServiceName -> IO ()
-nodeLink2 streamGraph portNumInput1 portNumInput2 hostName portNumOutput = withSocketsDo $ do
-    sock1 <- listenSocket portNumInput1
-    sock2 <- listenSocket portNumInput2
+nodeLink2 :: (Store alpha, Store beta, Store gamma)
+          => (Stream alpha -> Stream beta -> Stream gamma)
+          -> ServiceName
+          -> ServiceName
+          -> HostName
+          -> ServiceName
+          -> IO ()
+nodeLink2 streamOp inputPort1 inputPort2 outputHost outputPort = do
+    sock1 <- listenSocket inputPort1
+    sock2 <- listenSocket inputPort2
+    metrics <- startPrometheus "node-link"
     putStrLn "Starting link ..."
-    hFlush stdout
-    nodeLink2' sock1 sock2 streamGraph hostName portNumOutput
-
-
-nodeLink2' :: (FromJSON alpha, FromJSON beta, ToJSON gamma) => Socket -> Socket -> (Stream alpha -> Stream beta -> Stream gamma) -> HostName -> ServiceName -> IO ()
-nodeLink2' sock1 sock2 streamOps host port = do
-    stream1 <- processSocket sock1
-    stream2 <- processSocket sock2
-    let result = streamOps stream1 stream2
-    sendStream result host port
+    stream1 <- processSocket metrics sock1
+    stream2 <- processSocket metrics sock2
+    let result = streamOp stream1 stream2
+    sendStream result metrics outputHost outputPort
 
 
 --- SOURCE FUNCTIONS ---
 
-nodeSource :: ToJSON beta => IO alpha -> (Stream alpha -> Stream beta) -> HostName -> ServiceName -> IO ()
+nodeSource :: Store beta
+           => IO alpha
+           -> (Stream alpha -> Stream beta)
+           -> HostName
+           -> ServiceName
+           -> IO ()
 nodeSource pay streamGraph host port = do
+    metrics <- startPrometheus "node-source"
     putStrLn "Starting source ..."
-    stream <- readListFromSource pay
+    stream <- readListFromSource pay metrics
     let result = streamGraph stream
-    sendStream result host port -- or printStream if it's a completely self contained streamGraph
+    sendStream result metrics host port -- or printStream if it's a completely self contained streamGraph
 
 
 --- UTILITY FUNCTIONS ---
 
-readListFromSource :: IO alpha -> IO (Stream alpha)
+readListFromSource :: IO alpha -> Metrics -> IO (Stream alpha)
 readListFromSource = go 0
   where
-    go i pay = System.IO.Unsafe.unsafeInterleaveIO $ do
+    go i pay met = unsafeInterleaveIO $ do
         x  <- msg i
-        xs <- go (i + 1) pay    -- This will overflow eventually
+        PC.inc (_ingressEvents met)
+        xs <- go (i + 1) pay met    -- This will overflow eventually
         return (x : xs)
       where
         msg x = do
-            now     <- getCurrentTime
-            payload <- pay
-            return (Event x (Just now) (Just payload))
+            now <- getCurrentTime
+            Event x (Just now) . Just <$> pay
 
 
 {- processSocket is a wrapper function that handles concurrently
 accepting and handling connections on the socket and reading all of the strings
 into an event Stream -}
-processSocket :: FromJSON alpha => Socket -> IO (Stream alpha)
-processSocket sock = acceptConnections sock >>= readEventsTChan
+processSocket :: Store alpha => Metrics -> Socket -> IO (Stream alpha)
+processSocket met sock = U.getChanContents =<< acceptConnections met sock
 
 
 {- acceptConnections takes a socket as an argument and spins up a new thread to
 process the data received. The returned TChan object contains the data from
 the socket -}
-acceptConnections :: FromJSON alpha => Socket -> IO (U.OutChan (Event alpha))
-acceptConnections sock = do
-    (inChan, outChan) <- U.newChan
-    _         <- forkIO $ connectionHandler sock inChan
+acceptConnections :: Store alpha => Metrics -> Socket -> IO (U.OutChan (Event alpha))
+acceptConnections met sock = do
+    (inChan, outChan) <- U.newChan chanSize
+    async $ connectionHandler met sock inChan
     return outChan
 
 
-{- connectionHandler sits accepting any new connections. Once
-accepted, it is converted to a handle and a new thread is forked to handle all
-reading. The function then loops to accept a new connection. forkFinally is used
-to ensure the thread closes the handle before it exits -}
-connectionHandler :: FromJSON alpha => Socket -> U.InChan (Event alpha) -> IO ()
-connectionHandler sockIn eventChan = forever $ do
-    -- putStrLn "Awaiting new connection"
-    (sock, _) <- accept sockIn
-    hdl <- socketToHandle sock ReadWriteMode
-    -- putStrLn "Forking to process new connection"
-    forkFinally   (processHandle hdl eventChan) (\_ -> hClose hdl)
+{- We are using a bounded queue to prevent extreme memory usage when
+input rate > consumption rate. This value may need to be increased to achieve
+higher throughput when computation costs are low -}
+chanSize :: Int
+chanSize = 10
 
 
-{- processHandle takes a Handle and TChan. All of the events are read through
-hGetLines' with the IO deferred lazily. The string list is mapped to a Stream
-and passed to writeEventsTChan -}
-processHandle :: FromJSON alpha => Handle -> U.InChan (Event alpha) -> IO ()
-processHandle handle eventChan = do
-    byteStream <- hGetLines' handle
-    let eventStream = mapMaybe decodeStrict byteStream
-    U.writeList2Chan eventChan eventStream
+{- connectionHandler sits accepting any new connections. Once accepted, a new
+thread is forked to read from the socket. The function then loops to accept any
+subsequent connections -}
+connectionHandler :: Store alpha => Metrics -> Socket -> U.InChan (Event alpha) -> IO ()
+connectionHandler met sockIn eventChan = forever $ do
+    (conn, _) <- accept sockIn
+    forkFinally (PG.inc (_ingressConn met)
+                 >> processData met conn eventChan)
+                (\_ -> PG.dec (_ingressConn met)
+                       >> close conn)
 
 
-{- writeEventsTChan takes a TChan and Stream of the same type, and recursively
-writes the events atomically to the TChan, until an empty list -}
-writeEventsTChan :: FromJSON alpha => U.InChan (Event alpha) -> Stream alpha -> IO ()
-writeEventsTChan eventChan = mapM_ (U.writeChan eventChan)
-
-{- readEventsTChan creates a stream of events from reading the next element from
-a TChan, but the IO is deferred lazily. Only when the next value of the Stream
-is evaluated does the IO computation take place -}
-readEventsTChan :: FromJSON alpha => U.OutChan (Event alpha) -> IO (Stream alpha)
-readEventsTChan eventChan = System.IO.Unsafe.unsafeInterleaveIO $ do
-    x <- U.readChan eventChan
-    xs <- readEventsTChan eventChan
-    return (x : xs)
-
-
-readListFromSocket :: Socket -> IO [B.ByteString]
-readListFromSocket sock = do
-    (_, stream) <- readListFromSocket' sock
-    return stream
+{- processData takes a Socket and UChan. All of the events are read through
+use of a ByteBuffer and recv. The events are decoded by using store-streaming
+and added to the chan  -}
+processData :: Store alpha => Metrics -> Socket -> U.InChan (Event alpha) -> IO ()
+processData met conn eventChan =
+    BB.with Nothing $ \buffer -> forever $ do
+        event <- decodeMessageBS' met buffer (readFromSocket conn)
+        case event of
+            Just m  -> do
+                        PC.inc (_ingressEvents met)
+                        U.writeChan eventChan $ SS.fromMessage m
+            Nothing -> print "decode failed"
 
 
-readListFromSocket' :: Socket -> IO (Handle, [B.ByteString])
-readListFromSocket' sockIn = do
-    (sock,_) <- accept sockIn
-    hdl <- socketToHandle sock ReadWriteMode
-    -- putStrLn "Open input connection"
-    stream <- hGetLines' hdl
-    return (hdl, stream)
+{- This is a rewrite of Data.Store.Streaming decodeMessageBS, passing in
+Metrics so that we can calculate ingressBytes while decoding -}
+decodeMessageBS' :: Store a
+                 => Metrics -> BB.ByteBuffer
+                 -> IO (Maybe B.ByteString) -> IO (Maybe (SS.Message a))
+decodeMessageBS' met = SS.decodeMessage (\bb _ bs -> PC.add (B.length bs)
+                                                            (_ingressBytes met)
+                                                     >> BB.copyByteString bb bs)
+
+{- Read up to 4096 bytes from the socket at a time, packing into a Maybe
+structure. As we use TCP sockets recv should block, and so if msg is empty
+the connection has been closed -}
+readFromSocket :: Socket -> IO (Maybe B.ByteString)
+readFromSocket conn = do
+    msg <- recv conn 4096
+    if B.null msg
+        then error "Upstream connection closed"
+        else return $ Just msg
 
 
-readEventStreamFromSocket :: FromJSON alpha => Socket -> IO (Handle, Stream alpha)
-readEventStreamFromSocket sock = do
-    (hdl, byteStream) <- readListFromSocket' sock
-    let eventStream = mapMaybe decodeStrict byteStream
-    return (hdl, eventStream)
+{- Connects to socket within a bracket to ensure the socket is closed if an
+exception occurs -}
+sendStream :: Store alpha => Stream alpha -> Metrics -> HostName -> ServiceName -> IO ()
+sendStream []     _   _    _    = return ()
+sendStream stream met host port =
+    E.bracket (PG.inc (_egressConn met)
+               >> connectSocket host port)
+              (\conn -> PG.dec (_egressConn met)
+                        >> close conn)
+              (\conn -> writeSocket conn met stream)
 
 
-sendStream :: ToJSON alpha => Stream alpha -> HostName -> ServiceName -> IO ()
-sendStream []     _    _    = return ()
-sendStream stream host port = withSocketsDo $ do
-    sock <- connectSocket host port
-    handle <- socketToHandle sock ReadWriteMode
-    -- putStrLn "Open output connection"
-    hPutLines'    handle stream
+{- Encode messages and send over the socket -}
+writeSocket :: Store alpha => Socket -> Metrics -> Stream alpha -> IO ()
+writeSocket conn met =
+    mapM_ (\event ->
+            let val = SS.encodeMessage . SS.Message $ event
+            in  PC.inc (_egressEvents met)
+                >> PC.add (B.length val) (_egressBytes met)
+                >> sendAll conn val)
 
 
-{- hGetLines' creates a list of Strings from a Handle, where the IO computation
-is deferred lazily until the values are requested -}
-hGetLines' :: Handle -> IO [B.ByteString]
-hGetLines' handle = System.IO.Unsafe.unsafeInterleaveIO $ do
-    readable <- hIsReadable handle
-    eof      <- hIsEOF handle
-    if not eof && readable
-        then do
-            x  <- B.hGetLine handle
-            xs <- hGetLines' handle
-            -- BC.putStrLn x
-            return (x : xs)
-        else return []
+--- PROMETHEUS ---
 
-
-hPutLines' :: ToJSON alpha => Handle -> Stream alpha -> IO ()
-hPutLines' handle [] = do
-    hClose handle
-    -- putStrLn "Closed output handle"
-    return ()
-hPutLines' handle (x:xs) = do
-    writeable <- hIsWritable handle
-    open      <- hIsOpen handle
-    when (open && writeable) $ do
-        -- BLC.putStrLn (encode x)
-        BLC.hPutStrLn    handle (encode x)
-        hPutLines' handle xs
+startPrometheus :: String -> IO Metrics
+startPrometheus nodeName = do
+    reg <- PR.new
+    let lbl = addLabel "node" (T.pack nodeName) mempty
+        registerFn fn name = fn name lbl reg
+    ingressConn   <- registerFn registerGauge   "striot_ingress_connection"
+    ingressBytes  <- registerFn registerCounter "striot_ingress_bytes_total"
+    ingressEvents <- registerFn registerCounter "striot_ingress_events_total"
+    egressConn    <- registerFn registerGauge   "striot_egress_connection"
+    egressBytes   <- registerFn registerCounter "striot_egress_bytes_total"
+    egressEvents  <- registerFn registerCounter "striot_egress_events_total"
+    async $ serveHttpTextMetrics 8080 ["metrics"] (PR.sample reg)
+    return Metrics { _ingressConn   = ingressConn
+                   , _ingressBytes  = ingressBytes
+                   , _ingressEvents = ingressEvents
+                   , _egressConn    = egressConn
+                   , _egressBytes   = egressBytes
+                   , _egressEvents  = egressEvents }
 
 
 --- SOCKETS ---
@@ -264,7 +294,9 @@ createSocket host port hints = do
     resolve host' port' hints' = do
         addr:_ <- getAddrInfo (Just hints') (isHost host') (Just port')
         return addr
-    getSocket addr = socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+    getSocket addr = socket (addrFamily addr)
+                            (addrSocketType addr)
+                            (addrProtocol addr)
     isHost h
         | null h    = Nothing
         | otherwise = Just h
