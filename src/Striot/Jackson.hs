@@ -182,8 +182,12 @@ test6 = mm_subtract ex1 ex1
 test7 = m_trans ex1
 test8 = mm_subtract (identity ex1) (m_trans ex1)
 
-test_identity = assertEqual (identity ex1) (listArray ((1,1),(3,3))
-    ([1, 0, 0
-     ,0, 1, 0
-     ,0, 0, 1
-     ] :: [Double]))
+prop_identity = do
+    n <- vectorOf 9 arbitrary :: Gen [Double]
+    return $ identity (listArray shape n)
+        == listArray shape
+           ([1, 0, 0
+            ,0, 1, 0
+            ,0, 0, 1
+            ] :: [Double])
+    where shape = ((1,1),(3,3))
