@@ -1,10 +1,14 @@
-module Jackson where
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
+
+module Striot.Jackson where
 -- import FunctionalIoTtypes
 -- import FunctionalProcessing
 import Data.Array -- cabal install array
 import Matrix.LU -- cabal install dsp
 import Matrix.Matrix
 import Data.List
+
+import Test.Framework
 
 -- References & Manuals
 -- https://en.wikipedia.org/wiki/Jackson_network
@@ -177,3 +181,9 @@ test5 = identity ex1
 test6 = mm_subtract ex1 ex1
 test7 = m_trans ex1
 test8 = mm_subtract (identity ex1) (m_trans ex1)
+
+test_identity = assertEqual (identity ex1) (listArray ((1,1),(3,3))
+    ([1, 0, 0
+     ,0, 1, 0
+     ,0, 0, 1
+     ] :: [Double]))
