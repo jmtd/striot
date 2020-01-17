@@ -18,27 +18,36 @@ import Test.Framework
 -- https://hackage.haskell.org/package/array-0.5.1.1/docs/Data-Array.html
 -- http://haskelldsp.sourceforge.net/doc/Matrix.Matrix.html
 
+-- |Derive the identity matrix from a 2D Array
 identity:: (Ix a, Integral a, Num b) => Array (a,a) b -> Array (a,a) b
 identity p = listArray (bounds p) $ [if row==column then 1 else 0| row<-[1..size],column<-[1..size]]
                         where size = fst $ snd $ bounds p
                         
+-- |Matrix subtraction.
+-- The indexes must begin at 1.
 mm_subtract:: (Ix a, Integral a, Num b) => Array (a, a) b -> Array (a, a) b -> Array (a, a) b
 mm_subtract x y = listArray (bounds x) $ [(x Data.Array.! (row,column))-(y Data.Array.! (row,column))| row<-[1..size],column<-[1..size]] 
                           where size = fst $ snd $ bounds x
                           
-                          
+-- | Matrix multiplication.
+-- The indexes must begin at 1.
 ma_mult:: (Ix a, Integral a, Num b) => Array (a, a) b -> b -> Array (a, a) b 
 ma_mult x v   = listArray (bounds x) $ [v*(x Data.Array.! (row,column))| row<-[1..size],column<-[1..size]] 
                           where size = fst $ snd $ bounds x
                           
+-- | Vector (1D Array) multiplication by value.
+-- The indexes must begin at 1.
 va_mult:: (Ix a, Integral a, Num b) => Array a b -> b -> Array a b 
 va_mult x val   = listArray (bounds x) $ [val*(x Data.Array.! row)| row<-[1..size]] 
                           where size = snd $ bounds x
                           
+-- | Vector (1D Array) multiplication.
+-- The indexes must begin at 1.
 vv_mult:: (Ix a, Integral a, Num b) => Array a b -> Array a b -> Array a b
 vv_mult v1 v2 = listArray (bounds v1) $ [(v1 Data.Array.! row)*(v2 Data.Array.!row) |row <- [1..size]]
                           where size = snd $ bounds v1
 
+-- | Vector (1D Array) equivalent of `take`
 v_take:: Int -> Array Int b -> Array Int b
 v_take max v = listArray (1,max) $ [v Data.Array.! row |row <- [1..max]]
 
