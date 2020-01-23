@@ -7,8 +7,12 @@ import Data.Array -- cabal install array
 import Matrix.LU -- cabal install dsp
 import Matrix.Matrix
 import Data.List
-
 import Test.Framework
+
+import Striot.StreamGraph
+import Striot.CompileIoT
+
+import Algebra.Graph
 
 -- References & Manuals
 -- https://en.wikipedia.org/wiki/Jackson_network
@@ -200,3 +204,42 @@ prop_identity = do
             ,0, 0, 1
             ] :: [Double])
     where shape = ((1,1),(3,3))
+
+------------------------------------------------------------------------------
+-- convert a streamgraph into an adjacency matrix
+
+-- copied from examples/taxi/generate.hs, adjusted to match the simplied version
+-- above (fused filters; remove the window/expand hack for fixing up timestamps)
+taxiQ1 :: StreamGraph
+taxiQ1 = simpleStream
+    [ (Source 0,  ["source"],                           "Trip")
+    , (Map,       ["tripToJourney", "s"],               "Journey")
+    , (Filter,    ["(\\j -> inRangeQ1 (start j) && inRangeQ1 (end j))", "s"],"Journey")
+    , (Window,    ["(slidingTime 1800000)", "s"],       "[Journey]")
+    , (Map,       ["topk", "s"],                        "((UTCTime,UTCTime),[(Journey,Int)])")
+    , (FilterAcc, ["filterDupes"],                      "((UTCTime,UTCTime),[(Journey,Int)])")
+    , (Sink,      ["sink"],                             "((UTCTime,UTCTime),[(Journey,Int)])")
+    ]
+
+-- the adjacency matrix contains rates and selectivity which do not exist
+-- in the streamgraph data structure. So either the user must supply the
+-- the matrix alongside the streamgraph, or we need to extend the streamgraph
+-- type to include the selectivity and input rate etc values somehow
+--
+-- what values are in the adjacency matrix? looks like just selectivity?
+-- there are other inputs into the main functions too...
+-- main functions seems to be: "arrivalRate", look also at calcAll that
+-- does everything: arrivalRates, 
+--
+-- let's perhaps focus just on arrivalRates for now
+
+-- try to produce something that is equal to taxiQ1arrivalRates
+-- it's an array of length matching #nodes in graph, numbering from 1, with the
+-- initial node arrival rate a constant , and the rest calculated from someting
+-- else
+
+taxiQ1arrivalRates' = let
+    n = 1
+    m = length $ vertexList taxiQ1
+    a = 1.2 -- initial arrival rate
+    in arrivalRate taxiQ1Array taxiQ1Inputs a
