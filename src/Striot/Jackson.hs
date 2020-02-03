@@ -1,6 +1,12 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module Striot.Jackson where
+module Striot.Jackson ( arrivalRate
+                      , utilisation
+                      , avgeResponseTime
+                      , avgeTimeInQueue
+                      , avgeNumberOfCustomersInSystem
+                      ) where
+
 -- import FunctionalIoTtypes
 -- import FunctionalProcessing
 import Data.Array -- cabal install array
@@ -8,6 +14,7 @@ import Matrix.LU -- cabal install dsp
 import Matrix.Matrix
 import Data.List
 import Test.Framework
+import Data.Maybe (fromMaybe)
 
 import Striot.StreamGraph
 import Striot.CompileIoT
@@ -133,8 +140,15 @@ taxiQ1Array = listArray ((1,1),(6,6)) $
                   0   ,0   ,0   ,0   ,0    ,0.1,     -- node 5 streamFilterAcc
                   0   ,0   ,0   ,0   ,0    ,0  ]     -- node 6 the output of Q1
 
+-- this is a routing table, effectively.
+--
+-- the probability of an event leaving node2 (filter) and arriving at node3 (window) is 0.95, i.e. this is the filter selectivity
+ 
 taxiQ1Inputs = listArray (1,6) $ [1,0,0,0,0,0] -- all events in the input stream are sent to node 1
 
+-- 6 nodes. is that input and 5 operators, or 5 operators and output?
+-- the longest service time is window in the former case and map in the latter
+-- I'm guessing it's window and this is modelling the buffering time
 taxiQ1meanServiceTimes:: Array Int Double
 taxiQ1meanServiceTimes = listArray (1,6) [0.0001,0.0001,0.0001,0.01,0.0001,0.0001]
 
@@ -212,7 +226,7 @@ prop_identity = do
 -- above (fused filters; remove the window/expand hack for fixing up timestamps)
 taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
-    [ (Source 0,  ["source"],                           "Trip")
+    [ (Source,    ["source"],                           "Trip")
     , (Map,       ["tripToJourney", "s"],               "Journey")
     , (Filter,    ["(\\j -> inRangeQ1 (start j) && inRangeQ1 (end j))", "s"],"Journey")
     , (Window,    ["(slidingTime 1800000)", "s"],       "[Journey]")
@@ -220,18 +234,44 @@ taxiQ1 = simpleStream
     , (FilterAcc, ["filterDupes"],                      "((UTCTime,UTCTime),[(Journey,Int)])")
     , (Sink,      ["sink"],                             "((UTCTime,UTCTime),[(Journey,Int)])")
     ]
+taxiQ1arrivalRate' = 1.2 -- arrival rate into the system
+taxiQ1selectivity = [ (3, 0.95) -- nodeId 2 (filter), selectivity
+                    , (6, 0.1) ] :: [(Int, Double)]
+-- distribution of arriving events across source nodes: infer, there's just one
 
--- the adjacency matrix contains rates and selectivity which do not exist
--- in the streamgraph data structure. So either the user must supply the
--- the matrix alongside the streamgraph, or we need to extend the streamgraph
--- type to include the selectivity and input rate etc values somehow
+-- | Calculate the P propagation array for a StreamGraph based on its
+-- filter selectivity map.
+calcPropagationArray :: StreamGraph -> [(Int, Double)] -> Array (Int, Int) Double
+calcPropagationArray g selectivity = let
+    vl = vertexList g
+    el = map (\(x,y) -> (vertexId x, vertexId y)) (edgeList g)
+    look v (f,t) = if   f == vertexId v
+                   then fromMaybe 1 $ lookup (vertexId v) selectivity
+                   else 0
+    m = length vl - 1 -- XXX adjusting for 1 Source node
+    in listArray ((1,1),(m,m)) $ concatMap (\v -> map (look v) el) (tail vl)
+    --                              XXX adjusting for 1 Source node ^^^^
+
+test_calcPropagationArray = assertEqual taxiQ1Array $
+    calcPropagationArray taxiQ1 taxiQ1selectivity
+
+-- we need to know:
+--  • the arrival rate into the system
+--  • the distribution of arriving events amongst source nodes (taxiQ1Inputs), sums to 1
+--  • the distribution of inputs (summing to 1): for one source node, just '1' for that node
+--    the probability of routing events from one node to another (so, largely similar to an
+--    identity matrix, with guaranteed routing between the nodes of the path down the diagonal,
+--    but non-1 for filters) — taxiQ1Array
 --
--- what values are in the adjacency matrix? looks like just selectivity?
--- there are other inputs into the main functions too...
--- main functions seems to be: "arrivalRate", look also at calcAll that
--- does everything: arrivalRates, 
---
+--          this can be largely inferred except for filter selectivity from the
+--          graph topology. But we need the user to specify the selectivity somehow.
+--          if not in the graph types, then is there any point having something other
+--          than the whole matrix?
+
 -- let's perhaps focus just on arrivalRates for now
+--
+--      requires the routing matrix (taxiQ1Array) and the top-level arrivalrate
+--      constant 
 
 -- try to produce something that is equal to taxiQ1arrivalRates
 -- it's an array of length matching #nodes in graph, numbering from 1, with the
@@ -243,3 +283,5 @@ taxiQ1arrivalRates' = let
     m = length $ vertexList taxiQ1
     a = 1.2 -- initial arrival rate
     in arrivalRate taxiQ1Array taxiQ1Inputs a
+
+main = htfMain htf_thisModulesTests
