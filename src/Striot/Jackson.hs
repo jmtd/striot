@@ -5,6 +5,7 @@ module Striot.Jackson ( arrivalRate
                       , avgeResponseTime
                       , avgeTimeInQueue
                       , avgeNumberOfCustomersInSystem
+                      , JacksonParams
                       ) where
 
 -- import FunctionalIoTtypes
@@ -285,3 +286,12 @@ taxiQ1arrivalRates' = let
     in arrivalRate taxiQ1Array taxiQ1Inputs a
 
 main = htfMain htf_thisModulesTests
+
+-- wrap up all the inputs into a single type
+data JacksonParams = JacksonParams { jacksonPropagation      :: Array (Int,Int) Double
+                                   , jacksonMeanServiceTimes :: Array Int Double
+                                   , jacksonIncomingRate     :: Double
+                                   , jacksonInputs           :: Array Int Double
+                                   }
+
+taxiParams = JacksonParams taxiQ1Array taxiQ1meanServiceTimes 1.2 taxiQ1Inputs
