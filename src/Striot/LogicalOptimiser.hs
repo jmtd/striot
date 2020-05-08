@@ -14,6 +14,7 @@ import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Function ((&))
 import Data.List (nub, sort, intercalate)
 import Control.Arrow ((>>>))
+import Language.Haskell.TH
 
 -- applying encoded rules and their resulting ReWriteOps ----------------------
 
@@ -66,53 +67,71 @@ optimise sg = let
 
 rules :: [RewriteRule]
 rules = [ filterFuse
-        , mapFilter
-        , filterFilterAcc
-        , filterAccFilter
-        , filterAccFilterAcc
-        , mapFuse
-        , mapScan
-        , expandFilter
-        , mapFilterAcc
-        , mapWindow
-        , expandMap
-        , expandScan
-        , expandExpand
-        , windowExpandWindow
-        , mergeFilter 
-        , mergeExpand
-        , mergeMap
-        , mapMerge
-        , filterMerge
-        , expandMerge
-        , mergeFuse
+        --, mapFilter
+        --, filterFilterAcc
+        --, filterAccFilter
+        --, filterAccFilterAcc
+        --, mapFuse
+        --, mapScan
+        --, expandFilter
+        --, mapFilterAcc
+        --, mapWindow
+        --, expandMap
+        --, expandScan
+        --, expandExpand
+        --, windowExpandWindow
+        --, mergeFilter 
+        --, mergeExpand
+        --, mergeMap
+        --, mapMerge
+        --, filterMerge
+        --, expandMerge
+        --, mergeFuse
         ]
 
 -- streamFilter f >>> streamFilter g = streamFilter (\x -> f x && g x) -------
 
+-- XXX could we rewrite this using splicing etc?
+predFuse :: Exp -> Exp -> Exp
+predFuse p' q' = let
+    x = mkName "x"
+    p = mkName "p"
+    q = mkName "q"
+    l = LamE [VarP p,VarP q,VarP x] (InfixE (Just (AppE (VarE p) (VarE x))) (VarE '(&&)) (Just (AppE (VarE q) (VarE x))))
+    in AppE (AppE l p') q'
+
 filterFuse :: RewriteRule
 filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:s:[]) ty _))
                     (Vertex b@(StreamVertex _ Filter (q:_) _ _))) =
-
-    let c = StreamVertex i Filter ["((\\p q x -> p x && q x) ("++p++") ("++q++"))", s] ty ty
-    in  Just (removeEdge c c . mergeVertices (`elem` [a,b]) c)
+    let c = StreamVertex i Filter [predFuse p q, s] ty ty
+    in Just (removeEdge c c . mergeVertices (`elem` [a,b]) c)
 
 filterFuse _ = Nothing
 
+gt3 = InfixE Nothing (VarE '(>)) (Just (LitE (IntegerL 3)))
+lt5 = InfixE Nothing (VarE '(<)) (Just (LitE (IntegerL 5)))
+s   = UnboundVarE (mkName "s")
+
 so' = StreamVertex 0 Source [] "String" "String"
-f3  = StreamVertex 1 Filter ["(>3)", "s"] "String" "String"
-f4  = StreamVertex 2 Filter ["(<5)", "s"] "String" "String"
+f3  = StreamVertex 1 Filter [gt3, s] "String" "String"
+f4  = StreamVertex 2 Filter [lt5, s] "String" "String"
 si' = StreamVertex 3 Sink [] "String" "String"
+
+fused = let
+    p = mkName "p"
+    q = mkName "q"
+    x = mkName "x"
+    in AppE (AppE (LamE [VarP p,VarP q,VarP x] (InfixE (Just (AppE (VarE p) (VarE x))) (VarE '(&&)) (Just (AppE (VarE q) (VarE x))))) (InfixE Nothing (VarE '(>)) (Just (LitE (IntegerL 3))))) (InfixE Nothing (VarE '(<)) (Just (LitE (IntegerL 5))))
 
 filterFusePre = path [so', f3, f4, si']
 
 filterFusePost = path [ so'
-    , StreamVertex 1 Filter ["((\\p q x -> p x && q x) ((>3)) ((<5)))", "s"] "String" "String"
+    , StreamVertex 1 Filter [fused, s] "String" "String"
     , si' ]
 
 test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
     filterFusePost
-
+{-
 -- streamMap f >>> streamFilter p = streamFilter (f >>> p) >>> streamMap f ---
 
 mapFilter :: RewriteRule
@@ -447,7 +466,7 @@ expandScanPost = path
     ] where
     p  = "(\\b a' -> tail $ scanl (f) (last b) a')"
 
-test_expandScan = assertEqual (simplify$applyRule expandScan expandScanPre) expandScanPost
+test_expandScan = assertEqual (simplify $ applyRule expandScan expandScanPre) expandScanPost
 
 -- streamExpand >>> streamExpand == streamMap concat >>> streamExpand --------
 -- [[a]]        [a]             a  [[a]]            [a]              a
@@ -696,6 +715,8 @@ mergeFusePost = path [v23,v26,v28]
     `Overlay`   path [v25,v26]
 
 test_mergeFuse = assertEqual (applyRule mergeFuse mergeFusePre) mergeFusePost
+
+-}
 
 -- utility/boilerplate -------------------------------------------------------
 

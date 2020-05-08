@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Striot.CompileIoT ( createPartitions
                          , generateCode
@@ -22,6 +23,7 @@ import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing)
 import Data.Function ((&))
 import Data.List.Match (compareLength)
+import Language.Haskell.TH
 
 import Striot.StreamGraph
 import Striot.LogicalOptimiser

@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-
  - Striot StreamGraph type, used for representing a stream processing program,
  - such that it can be re-written and partitioned.
@@ -9,6 +10,7 @@ module Striot.StreamGraph ( StreamGraph(..)
                           ) where
 
 import Algebra.Graph
+import Language.Haskell.TH
 import Test.Framework -- Arbitrary, etc.
 
 -- |The `StreamOperator` and associated information required to encode a stream-processing
@@ -18,7 +20,7 @@ import Test.Framework -- Arbitrary, etc.
 data StreamVertex = StreamVertex
     { vertexId   :: Int
     , operator   :: StreamOperator
-    , parameters :: [String]       -- operator arguments (excluding the input stream)
+    , parameters :: [Exp]
     , intype     :: String
     , outtype    :: String
     } deriving (Eq,Show)
