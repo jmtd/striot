@@ -80,7 +80,7 @@ rules = [ filterFuse
         --, expandScan
         --, expandExpand
         --, windowExpandWindow
-        --, mergeFilter 
+        --, mergeFilter
         --, mergeExpand
         --, mergeMap
         --, mapMerge
