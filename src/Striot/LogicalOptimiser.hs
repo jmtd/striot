@@ -15,6 +15,7 @@ import Data.Function ((&))
 import Data.List (nub, sort, intercalate)
 import Control.Arrow ((>>>))
 import Language.Haskell.TH
+import System.IO.Unsafe (unsafePerformIO)
 
 -- applying encoded rules and their resulting ReWriteOps ----------------------
 
@@ -91,14 +92,15 @@ rules = [ filterFuse
 
 -- streamFilter f >>> streamFilter g = streamFilter (\x -> f x && g x) -------
 
--- XXX could we rewrite this using splicing etc?
+-- | This is safe for some Exp and not for others. It depends on whether
+-- type checking needs to take place (etc). TODO: figure out exactly what
+-- is safe.
+deQ :: Q Exp -> Exp
+deQ = unsafePerformIO . runQ
+
 predFuse :: Exp -> Exp -> Exp
-predFuse p' q' = let
-    x = mkName "x"
-    p = mkName "p"
-    q = mkName "q"
-    l = LamE [VarP p,VarP q,VarP x] (InfixE (Just (AppE (VarE p) (VarE x))) (VarE '(&&)) (Just (AppE (VarE q) (VarE x))))
-    in AppE (AppE l p') q'
+predFuse p q =
+    deQ [| (\p q x -> p x && q x) $(return p) $(return q) |]
 
 filterFuse :: RewriteRule
 filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:s:[]) ty _))
@@ -117,16 +119,23 @@ f3  = StreamVertex 1 Filter [gt3, s] "String" "String"
 f4  = StreamVertex 2 Filter [lt5, s] "String" "String"
 si' = StreamVertex 3 Sink [] "String" "String"
 
-fused = let
+-- this won't pass either; the variable names won't match deQ predFuse
+fused = deQ [| (\p q x -> p x && q x) (>3) (<5) |]
+
+oldfused = let
     p = mkName "p"
     q = mkName "q"
     x = mkName "x"
-    in AppE (AppE (LamE [VarP p,VarP q,VarP x] (InfixE (Just (AppE (VarE p) (VarE x))) (VarE '(&&)) (Just (AppE (VarE q) (VarE x))))) (InfixE Nothing (VarE '(>)) (Just (LitE (IntegerL 3))))) (InfixE Nothing (VarE '(<)) (Just (LitE (IntegerL 5))))
+    in fused' p q x
+
+-- no longer passing! the output of DeQ predfuse… will have unpredictable variable names
+fused' p q x =
+    AppE (AppE (LamE [VarP p,VarP q,VarP x] (InfixE (Just (AppE (VarE p) (VarE x))) (VarE '(&&)) (Just (AppE (VarE q) (VarE x))))) (InfixE Nothing (VarE '(>)) (Just (LitE (IntegerL 3))))) (InfixE Nothing (VarE '(<)) (Just (LitE (IntegerL 5))))
 
 filterFusePre = path [so', f3, f4, si']
 
 filterFusePost = path [ so'
-    , StreamVertex 1 Filter [fused, s] "String" "String"
+    , StreamVertex 1 Filter [oldfused, s] "String" "String"
     , si' ]
 
 test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
