@@ -22,14 +22,38 @@ source = "do\n\
 
 exp' = LitE (IntegerL 5)
 
-graph = simpleStream
- [ (Source , [exp'], "String") -- source
- , (Map    , [exp'], "String") --["id", "s"]
- , (Filter , [exp'], "String") --["(\\i -> (read i :: Int) > 5)", "s"]
- , (Window , [exp'], "String") --["(chop 1)", "s"]
- , (Sink   , [exp'], "[String]")  --["mapM_ $ putStrLn . (\"receiving \"++) . show . value"]
+ssi = -- simpleStream input
+ [ (Source , [[| source |]], "String")
+ , (Map    , [[| id |]], "String")
+ , (Filter , [[| \i -> (read i :: Int) > 5 |]], "String")
+ , (Window , [[| chop 1 |]], "String")
+ , (Sink   , [[| mapM_ $ putStrLn . ("receiving"++) . show . value |]], "[String]")
  ]
+
+graph = simpleStream ssi
 
 parts = [[1,2],[3,4,5]]
 
-main = partitionGraph graph parts opts
+runVertex :: StreamVertexQ -> IO StreamGraph
+runVertex v@(StreamVertexQ i ops qpars inT outT) = do
+    pars <- mapM runQ qpars
+    return $ Vertex (StreamVertex i ops pars inT outT)
+
+deQ :: Graph StreamVertexQ -> IO StreamGraph
+deQ = foldg
+    (return empty)
+    runVertex
+    (\ x y -> do
+        x' <- x
+        y' <- y
+        return (overlay x' y')
+    )
+    (\ x y -> do
+        x' <- x
+        y' <- y
+        return (connect x' y')
+    )
+
+main = do
+    g <- deQ graph
+    partitionGraph g parts opts

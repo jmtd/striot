@@ -400,15 +400,14 @@ partitionGraph graph partitions opts =
 -- the relevant `StreamOperator` for the node; the parameters and the *output*
 -- type. The other parameters to `StreamVertex` are inferred from the neighbouring
 -- tuples. Unique and ascending `vertexId` values are assigned.
--- XXX use ExpQ and runQ, move to IO ()
-simpleStream :: [(StreamOperator, [Exp], String)] -> Graph StreamVertex
+simpleStream :: [(StreamOperator, [ExpQ], String)] -> Graph StreamVertexQ
 simpleStream tupes = path lst
 
     where
         intypes = "IO ()" : (map (\(_,_,ty) -> ty) (init tupes))
         tupes3 = zip3 [1..] intypes tupes
         lst = map (\ (i,intype,(op,params,outtype)) ->
-            StreamVertex i op params intype outtype) tupes3
+            StreamVertexQ i op params intype outtype) tupes3
 
 ------------------------------------------------------------------------------
 

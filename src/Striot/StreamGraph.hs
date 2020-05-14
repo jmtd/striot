@@ -7,6 +7,7 @@
 module Striot.StreamGraph ( StreamGraph(..)
                           , StreamOperator(..)
                           , StreamVertex(..)
+                          , StreamVertexQ(..)
                           ) where
 
 import Algebra.Graph
@@ -24,6 +25,14 @@ data StreamVertex = StreamVertex
     , intype     :: String
     , outtype    :: String
     } deriving (Eq,Show)
+
+data StreamVertexQ = StreamVertexQ
+    { vertexIdQ  :: Int
+    , operatorQ  :: StreamOperator
+    , parametersQ:: [ExpQ]
+    , intypeQ    :: String
+    , outtypeQ   :: String
+    }
 
 -- |A graph representation of a stream-processing program.
 type StreamGraph = Graph StreamVertex
