@@ -16,7 +16,7 @@ opts = defaultOpts { imports  = imports defaultOpts ++ [ "System.Random"
                                                        , "Data.Foldable"
                                                        ]
                  --, packages = ["random"]
-                   , rewrite  = False
+                   , rewrite  = True
                    }
 
 source = [| do
@@ -30,13 +30,14 @@ ssi =
  [ (Source , [source], "Int")
  , (Filter , [[| (>5) |]], "Int")
  , (Filter , [[| (<8) |]], "Int")
+ , (Map    , [[| id   |]], "Int") -- work around bug #88
  , (Window , [[| chop 1 |]], "[Int]")
  , (Sink   , [[| mapM_ $ putStrLn . ("receiving "++) . show . value |]], "[String]")
  ]
 
 graph = simpleStream ssi
 
-parts = [[1,2,3],[3,4,5]]
+parts = [[1,2,3,4],[5,6]]
 
 main = do
     partitionGraph graph parts opts
