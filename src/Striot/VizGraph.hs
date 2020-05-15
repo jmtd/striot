@@ -18,7 +18,7 @@ streamGraphToDot :: StreamGraph -> String
 streamGraphToDot = export myStyle
 
 show' :: StreamVertex -> String
-show' v = intercalate " " $ ((printOp . operator) v) : ((map (\s->"("++s++")")) . parameters) v
+show' v = intercalate " " $ ((printOp . operator) v) : ((map (\s->"("++s++")")) . map showParam . parameters) v
 
 printOp :: StreamOperator -> String
 printOp = (++) "stream" . show
@@ -41,6 +41,7 @@ escape (x:xs) = if x == '"' then '\\':'"':(escape xs) else x:(escape xs)
 
 -- test data
 --source x = "do\n    threadDelay (1000*1000)\n    putStrLn \"sending '"++x++"'\"\n    return \""++x++"\""
+{-
 source x = "do threadDelay (1000*1000); putStrLn \"sending '"++x++"'\"; return \""++x++"\""
 v1 = StreamVertex 1 Source [source "foo"]  "String" "String"
 v2 = StreamVertex 2 Map    ["Prelude.id"]  "String" "String"
@@ -57,6 +58,7 @@ v9 = StreamVertex 5 Expand [""]                 "[String]" "String"
 v10 = StreamVertex 6 Sink   ["mapM_ print"] "String" "IO ()"
 expandEx :: StreamGraph
 expandEx = path [v7, v8, v9, v10]
+-}
 
 displayGraph :: StreamGraph -> IO ()
 displayGraph g = do

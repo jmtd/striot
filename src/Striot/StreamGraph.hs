@@ -7,11 +7,13 @@
 module Striot.StreamGraph ( StreamGraph(..)
                           , StreamOperator(..)
                           , StreamVertex(..)
+                          , showParam
                           ) where
 
 import Algebra.Graph
 import Data.List (intercalate)
 import Language.Haskell.TH
+import System.IO.Unsafe (unsafePerformIO)
 import Test.Framework -- Arbitrary, etc.
 
 -- |The `StreamOperator` and associated information required to encode a stream-processing
@@ -43,6 +45,12 @@ instance Show StreamVertex where
             , show inT
             , show outT
             ]
+
+deQ :: Q Exp -> Exp
+deQ = unsafePerformIO . runQ
+
+showParam :: Q Exp -> String
+showParam qexp = pprint (deQ qexp)
 
 -- |A graph representation of a stream-processing program.
 type StreamGraph = Graph StreamVertex

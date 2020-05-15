@@ -21,7 +21,6 @@ import Algebra.Graph.ToGraph (reachable)
 import Test.Framework
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing)
-import System.IO.Unsafe (unsafePerformIO)
 import Data.Function ((&))
 import Data.List.Match (compareLength)
 import Language.Haskell.TH
@@ -278,12 +277,6 @@ generateSinkFn sg = "sink1 :: Show a => Stream a -> IO ()\nsink1 = " ++
 
 generateNodeLink :: Integer -> String
 generateNodeLink n = "main = nodeLink (defaultLink \"9001\" \"node"++(show n)++"\" \"9001\") streamGraphFn"
-
-deQ :: Q Exp -> Exp
-deQ = unsafePerformIO . runQ
-
-showParam :: Q Exp -> String
-showParam qexp = pprint (deQ qexp)
 
 -- warts:
 --  we accept a list of onward nodes but nodeSource only accepts one anyway
