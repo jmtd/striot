@@ -21,6 +21,7 @@ import Algebra.Graph.ToGraph (reachable)
 import Test.Framework
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing)
+import System.IO.Unsafe (unsafePerformIO)
 import Data.Function ((&))
 import Data.List.Match (compareLength)
 import Language.Haskell.TH
@@ -119,7 +120,17 @@ data GenerateOpts = GenerateOpts
     }
 
 defaultOpts = GenerateOpts
-    { imports   = ["Striot.FunctionalIoTtypes", "Striot.FunctionalProcessing", "Striot.Nodes", "Control.Concurrent"]
+    { imports   = [ "Striot.FunctionalIoTtypes"
+                  , "Striot.FunctionalProcessing"
+                  , "Striot.Nodes"
+                  , "Control.Concurrent"
+                  -- these are a consequence of TH fully declaring the functions
+                  -- that it expands when evaluating Expressions
+                  , "GHC.Base"
+                  , "GHC.Show"
+                  , "GHC.Types"
+                  , "GHC.Classes"
+                  ]
     , packages  = []
     , preSource = Nothing
     , rewrite   = True
@@ -259,14 +270,20 @@ connectNodeId sg parts cuts = let
 
 generateSrcFn :: StreamGraph -> String
 generateSrcFn sg = "src1 = " ++
-    (intercalate "\n" . map show . parameters . head . vertexList $ sg) ++ "\n"
+    (intercalate "\n" . map showParam . parameters . head . vertexList $ sg) ++ "\n"
 
 generateSinkFn:: StreamGraph -> String
 generateSinkFn sg = "sink1 :: Show a => Stream a -> IO ()\nsink1 = " ++
-    (intercalate "\n" . map show . parameters . head . reverse . vertexList $ sg) ++ "\n"
+    (intercalate "\n" . map showParam . parameters . head . reverse . vertexList $ sg) ++ "\n"
 
 generateNodeLink :: Integer -> String
 generateNodeLink n = "main = nodeLink (defaultLink \"9001\" \"node"++(show n)++"\" \"9001\") streamGraphFn"
+
+deQ :: Q Exp -> Exp
+deQ = unsafePerformIO . runQ
+
+showParam :: Q Exp -> String
+showParam qexp = pprint (deQ qexp)
 
 -- warts:
 --  we accept a list of onward nodes but nodeSource only accepts one anyway
@@ -325,12 +342,15 @@ generateCodeFromVertex :: (Int, StreamVertex) -> String
 generateCodeFromVertex (opid, v)  = let
     op      = operator v
     lparams = if op `elem` [Join,Merge] then "s1 s2" else "s"
-    params  = intercalate " " (map show $ parameters v)
+    params  = intercalate " " (map (paren.showParam) $ parameters v)
     args    = concat $ if op `elem` [Join,Merge]
         then ["n", show (opid-2), " n", show (opid-1)]
         else ["n", show (opid-1)]
     in
-        "n" ++ show opid ++ " = (\\" ++ lparams ++ " -> " ++ printOp op ++ " " ++ params ++ ") " ++ args
+        "n" ++ show opid ++ " = (\\" ++ lparams ++ " -> " ++ printOp op ++ " " ++ params ++ " "++lparams++") " ++ args
+
+paren :: String -> String
+paren s = "("++s++")"
 
 printOp :: StreamOperator -> String
 printOp = (++) "stream" . show
@@ -390,9 +410,8 @@ writePart opts (x,y) = let
 -- |Partitions the supplied `StreamGraph` according to the supplied `PartitionMap`;
 -- invokes `generateCode` for each derived sub-graph; writes out the resulting
 -- source code to individual source code files, one per node.
-partitionGraph :: StreamGraphQ -> PartitionMap -> GenerateOpts -> IO ()
-partitionGraph qgraph partitions opts = do
-    graph <- deQ qgraph
+partitionGraph :: StreamGraph -> PartitionMap -> GenerateOpts -> IO ()
+partitionGraph graph partitions opts =
     mapM_ (writePart opts) $ zip [1..] $ generateCode graph partitions opts
 
 -- |Convenience function for specifying a simple path-style of stream processing
@@ -401,14 +420,14 @@ partitionGraph qgraph partitions opts = do
 -- the relevant `StreamOperator` for the node; the parameters and the *output*
 -- type. The other parameters to `StreamVertex` are inferred from the neighbouring
 -- tuples. Unique and ascending `vertexId` values are assigned.
-simpleStream :: [(StreamOperator, [ExpQ], String)] -> Graph StreamVertexQ
+simpleStream :: [(StreamOperator, [ExpQ], String)] -> Graph StreamVertex
 simpleStream tupes = path lst
 
     where
         intypes = "IO ()" : (map (\(_,_,ty) -> ty) (init tupes))
         tupes3 = zip3 [1..] intypes tupes
         lst = map (\ (i,intype,(op,params,outtype)) ->
-            StreamVertexQ i op params intype outtype) tupes3
+            StreamVertex i op params intype outtype) tupes3
 
 ------------------------------------------------------------------------------
 

@@ -7,7 +7,7 @@ module Striot.LogicalOptimiser ( applyRules
                                , htf_thisModulesTests
                                ) where
 
-import Striot.StreamGraph hiding (deQ)
+import Striot.StreamGraph
 import Algebra.Graph
 import Test.Framework hiding ((===))
 import Data.Maybe (mapMaybe, fromMaybe)
@@ -92,50 +92,32 @@ rules = [ filterFuse
 
 -- streamFilter f >>> streamFilter g = streamFilter (\x -> f x && g x) -------
 
--- | This is safe for some Exp and not for others. It depends on whether
--- type checking needs to take place (etc). TODO: figure out exactly what
--- is safe.
-deQ :: Q Exp -> Exp
-deQ = unsafePerformIO . runQ
-
-predFuse :: Exp -> Exp -> Exp
-predFuse p q =
-    deQ [| (\p q x -> p x && q x) $(return p) $(return q) |]
+predFuse :: ExpQ -> ExpQ -> ExpQ
+predFuse p q = [| (\p q x -> p x && q x) $(p) $(q) |]
 
 filterFuse :: RewriteRule
-filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:s:[]) ty _))
+filterFuse (Connect (Vertex a@(StreamVertex i Filter (p:ps) ty _))
                     (Vertex b@(StreamVertex _ Filter (q:_) _ _))) =
-    let c = StreamVertex i Filter [predFuse p q, s] ty ty
+    let c = StreamVertex i Filter ((predFuse p q):ps) ty ty
     in Just (removeEdge c c . mergeVertices (`elem` [a,b]) c)
 
 filterFuse _ = Nothing
 
-gt3 = InfixE Nothing (VarE '(>)) (Just (LitE (IntegerL 3)))
-lt5 = InfixE Nothing (VarE '(<)) (Just (LitE (IntegerL 5)))
-s   = UnboundVarE (mkName "s")
+gt3 = [| (>3) |]
+lt5 = [| (<5) |]
 
-so' = StreamVertex 0 Source [] "String" "String"
-f3  = StreamVertex 1 Filter [gt3, s] "String" "String"
-f4  = StreamVertex 2 Filter [lt5, s] "String" "String"
-si' = StreamVertex 3 Sink [] "String" "String"
+so' = StreamVertex 0 Source []    "String" "String"
+f3  = StreamVertex 1 Filter [gt3] "String" "String"
+f4  = StreamVertex 2 Filter [lt5] "String" "String"
+si' = StreamVertex 3 Sink   []    "String" "String"
 
--- this won't pass either; the variable names won't match deQ predFuse
-fused = deQ [| (\p q x -> p x && q x) (>3) (<5) |]
-
-oldfused = let
-    p = mkName "p"
-    q = mkName "q"
-    x = mkName "x"
-    in fused' p q x
-
--- no longer passing! the output of DeQ predfuse… will have unpredictable variable names
-fused' p q x =
-    AppE (AppE (LamE [VarP p,VarP q,VarP x] (InfixE (Just (AppE (VarE p) (VarE x))) (VarE '(&&)) (Just (AppE (VarE q) (VarE x))))) (InfixE Nothing (VarE '(>)) (Just (LitE (IntegerL 3))))) (InfixE Nothing (VarE '(<)) (Just (LitE (IntegerL 5))))
+-- we can't compare Exp or ExpQ with free variables, so this is unused
+fused = [| (\p q x -> p x && q x) (>3) (<5) |]
 
 filterFusePre = path [so', f3, f4, si']
 
 filterFusePost = path [ so'
-    , StreamVertex 1 Filter [oldfused, s] "String" "String"
+    , StreamVertex 1 Filter [fused] "String" "String"
     , si' ]
 
 test_filterFuse = assertEqual (applyRule filterFuse filterFusePre)
