@@ -7,7 +7,7 @@ module Striot.LogicalOptimiser ( applyRules
                                , htf_thisModulesTests
                                ) where
 
-import Striot.StreamGraph
+import Striot.StreamGraph hiding (deQ)
 import Algebra.Graph
 import Test.Framework hiding ((===))
 import Data.Maybe (mapMaybe, fromMaybe)

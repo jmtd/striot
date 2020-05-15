@@ -390,8 +390,9 @@ writePart opts (x,y) = let
 -- |Partitions the supplied `StreamGraph` according to the supplied `PartitionMap`;
 -- invokes `generateCode` for each derived sub-graph; writes out the resulting
 -- source code to individual source code files, one per node.
-partitionGraph :: StreamGraph -> PartitionMap -> GenerateOpts -> IO ()
-partitionGraph graph partitions opts =
+partitionGraph :: StreamGraphQ -> PartitionMap -> GenerateOpts -> IO ()
+partitionGraph qgraph partitions opts = do
+    graph <- deQ qgraph
     mapM_ (writePart opts) $ zip [1..] $ generateCode graph partitions opts
 
 -- |Convenience function for specifying a simple path-style of stream processing

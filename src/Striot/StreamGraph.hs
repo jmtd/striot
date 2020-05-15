@@ -5,14 +5,36 @@
  -}
 
 module Striot.StreamGraph ( StreamGraph(..)
+                          , StreamGraphQ(..)
                           , StreamOperator(..)
                           , StreamVertex(..)
                           , StreamVertexQ(..)
+                          , deQ
                           ) where
 
 import Algebra.Graph
 import Language.Haskell.TH
 import Test.Framework -- Arbitrary, etc.
+
+deQ :: Graph StreamVertexQ -> IO StreamGraph
+deQ = foldg
+    (return empty)
+    runVertex
+ -- (\ x y -> x >>= \x' -> y >>= return . overlay x')
+    (\ x y -> x >>= \x' -> y >>= return . overlay x')
+ -- (\ x -> \ y -> x >>= \x' -> y >>= return . overlay x')
+ -- (\ x -> \ y -> (=<<) (\x' -> y >>= return . overlay x') x)
+ -- (\ y -> (=<<) (\x' -> y >>= return . overlay x'))
+    (\ x y -> do
+        x' <- x
+        y' <- y
+        return (connect x' y')
+    )
+
+runVertex :: StreamVertexQ -> IO StreamGraph
+runVertex (StreamVertexQ i ops qpars inT outT) = do
+    pars <- mapM runQ qpars
+    return $ Vertex (StreamVertex i ops pars inT outT)
 
 -- |The `StreamOperator` and associated information required to encode a stream-processing
 -- program into a Graph. Each distinct `StreamVertex` within a `StreamGraph` should have a
@@ -36,6 +58,7 @@ data StreamVertexQ = StreamVertexQ
 
 -- |A graph representation of a stream-processing program.
 type StreamGraph = Graph StreamVertex
+type StreamGraphQ = Graph StreamVertexQ
 
 -- |An enumeration of the possible stream operators within a stream-processing program,
 -- as well as `Source` and `Sink` to represent the ingress and egress points of programs.
