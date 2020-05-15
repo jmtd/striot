@@ -15,29 +15,28 @@ opts = defaultOpts { imports  = imports defaultOpts ++ [ "System.Random"
                                                        , "Text.Read"
                                                        , "Data.Foldable"
                                                        ]
-                   , packages = ["random"]
+                 --, packages = ["random"]
                    , rewrite  = False
                    }
 
 source = [| do
     i <- getStdRandom (randomR (1,10)) :: IO Int
-    let s = show i in do
-        threadDelay 1000000
-        putStrLn $ "client sending " ++ s
-        return s
+    threadDelay 1000000
+    putStrLn $ "client sending " ++ (show i)
+    return i
     |]
 
 ssi =
- [ (Source , [source], "String")
- , (Map    , [[| id |]], "String")
- , (Filter , [[| \i -> (read i :: Int) > 5 |]], "String")
- , (Window , [[| chop 1 |]], "[String]")
+ [ (Source , [source], "Int")
+ , (Filter , [[| (>5) |]], "Int")
+ , (Filter , [[| (<8) |]], "Int")
+ , (Window , [[| chop 1 |]], "[Int]")
  , (Sink   , [[| mapM_ $ putStrLn . ("receiving "++) . show . value |]], "[String]")
  ]
 
 graph = simpleStream ssi
 
-parts = [[1,2],[3,4,5]]
+parts = [[1,2,3],[3,4,5]]
 
 main = do
     partitionGraph graph parts opts
