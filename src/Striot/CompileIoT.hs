@@ -304,11 +304,13 @@ generateNodeSrc partId nodes opts parts = let
 
     pref = case preSource opts of
        Nothing -> ""
-       Just f  -> f
+       Just f  -> f ++ "\n  "
 
-    in "main = do\n\
-\       "++pref++"\n\
-\       nodeSource (defaultSource \""++host++"\" \""++(show port)++"\") src1 streamGraphFn"
+    in "main = do\n  " ++ (showParam [|
+        nodeSource (defaultSource $(litE (StringL host))
+                                  $(litE (StringL (show port))))
+                   src1 streamGraphFn
+    |])
 
 -- | does this StreamGraph start with a Join operator?
 startsWithJoin :: StreamGraph -> Bool
@@ -326,10 +328,10 @@ startsWithJoin sg = let
 test_startsWithJoin_3 = assertBool . not . startsWithJoin $ empty
 
 generateNodeSink :: StreamGraph -> String
-generateNodeSink sg =
+generateNodeSink sg = "main = " ++ (showParam $
     if startsWithJoin sg
-    then "main = nodeSink2 streamGraphFn sink1 \"9001\" \"9002\""
-    else "main = nodeSink (defaultSink \"9001\") streamGraphFn sink1"
+    then [| nodeSink2 streamGraphFn sink1 "9001" "9002" |]
+    else [| nodeSink (defaultSink "9001") streamGraphFn sink1 |])
 
 -- generateCodeFromVertex:  generates Haskell code to be included in a
 -- let expression, corresponding to the supplied StreamVertex. The Int
@@ -351,7 +353,8 @@ generateCodeFromVertex (opid, v)  = let
         then ["n", show (opid-2), " n", show (opid-1)]
         else ["n", show (opid-1)]
     in
-        "n" ++ show opid ++ " = (\\" ++ lparams ++ " -> " ++ printOp op ++ " " ++ params ++ " "++lparams++") " ++ args
+        --"n" ++ show opid ++ " = (\\" ++ lparams ++ " -> " ++ printOp op ++ " " ++ params ++ " "++lparams++") " ++ args
+        concat ["n", show opid, " = (\\", lparams, " -> ", printOp op, " ", params, " ", lparams, ") ", args]
 
 paren :: String -> String
 paren s = "("++s++")"

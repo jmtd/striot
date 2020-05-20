@@ -36,6 +36,8 @@ instance Eq StreamVertex where
                  , outtype a  == outtype b
                  ]
 
+-- this is needed for generating GraphViz output, and also
+-- is a requirement of ???
 instance Show StreamVertex where
     show (StreamVertex i o ps inT outT) =
         "StreamVertex " ++ intercalate " "
