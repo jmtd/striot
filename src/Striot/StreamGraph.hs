@@ -7,6 +7,7 @@
 module Striot.StreamGraph ( StreamGraph(..)
                           , StreamOperator(..)
                           , StreamVertex(..)
+                          , PartitionedGraph(..)
                           , showParam
                           ) where
 
@@ -56,6 +57,9 @@ showParam qexp = pprint (deQ qexp)
 
 -- |A graph representation of a stream-processing program.
 type StreamGraph = Graph StreamVertex
+
+-- |A collection of partitioned StreamGraphs
+type PartitionedGraph = ([StreamGraph], StreamGraph)
 
 -- |An enumeration of the possible stream operators within a stream-processing program,
 -- as well as `Source` and `Sink` to represent the ingress and egress points of programs.
