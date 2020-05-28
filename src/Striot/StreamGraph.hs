@@ -29,12 +29,12 @@ data StreamVertex = StreamVertex
     , outtype    :: String
     }
 
--- omitting comparing parameters
 instance Eq StreamVertex where
     a == b = and [ vertexId a == vertexId b
                  , operator a == operator b
                  , intype a   == intype b
                  , outtype a  == outtype b
+                 , (map showParam (parameters a)) == (map showParam (parameters b))
                  ]
 
 -- this is needed for generating GraphViz output, and also
@@ -44,7 +44,7 @@ instance Show StreamVertex where
         "StreamVertex " ++ intercalate " "
             [ show i
             , show o
-            , "[?]"
+            , show (map showParam ps)
             , show inT
             , show outT
             ]
