@@ -137,6 +137,8 @@ defaultOpts = GenerateOpts
                   , "GHC.Show"
                   , "GHC.Types"
                   , "GHC.Classes"
+                  , "GHC.List"
+                  , "Data.Tuple"
                   ]
     , packages  = []
     , preSource = Nothing
