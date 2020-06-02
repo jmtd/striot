@@ -30,8 +30,15 @@ import Test.Framework
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing)
 import Data.Function ((&))
+import Data.Maybe (catMaybes)
+import Data.List (nub)
 import Data.List.Match (compareLength)
 import Language.Haskell.TH
+
+-- SYB generic programming
+import Data.Data
+import Data.Generics.Schemes (everything)
+import Data.Generics.Aliases (mkQ)
 
 import Striot.StreamGraph
 import Striot.LogicalOptimiser
@@ -163,6 +170,21 @@ nodeType sg = if operator (head (vertexList sg)) == Source
               else if (operator.head.reverse.vertexList) sg == Sink
                    then NodeSink
                    else NodeLink
+
+-- deriving import lists from Expressions ------------------------------------
+
+getExps :: StreamGraph -> [ExpQ]
+getExps sg = concatMap parameters (vertexList sg)
+
+extractNames :: Data a => a -> [Name]
+extractNames = everything (++) (\a -> mkQ [] f a)
+     where f = (:[])
+
+requiredModules :: StreamGraph -> Q [String]
+requiredModules sg = mapM id (getExps sg) >>=
+    return . nub . catMaybes . map nameModule . concatMap extractNames
+
+------------------------------------------------------------------------------
 
 
 -- what would a nicer generateCodeFromStreamGraph look like? One within Q
@@ -432,8 +454,10 @@ writePart opts (x,y) = let
 -- invokes `generateCode` for each derived sub-graph; writes out the resulting
 -- source code to individual source code files, one per node.
 partitionGraph :: StreamGraph -> PartitionMap -> GenerateOpts -> IO ()
-partitionGraph graph partitions opts =
-    mapM_ (writePart opts) $ zip [1..] $ generateCode graph partitions opts
+partitionGraph graph partitions opts = do
+    newImports <- runQ (requiredModules graph)
+    let newopts = opts { imports = nub (imports opts ++ newImports) }
+    mapM_ (writePart newopts) $ zip [1..] $ generateCode graph partitions newopts
 
 -- |Convenience function for specifying a simple path-style of stream processing
 -- program, with no merge or join operations. The list of tuples are converted

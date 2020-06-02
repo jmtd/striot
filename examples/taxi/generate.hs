@@ -13,12 +13,6 @@ opts = GenerateOpts { imports = imports defaultOpts ++
                         , "Data.List.Split" -- splitOn
                         , "Control.Arrow" -- >>>
                         , "Control.Category" -- >>>, too!
-                        , "GHC.List" -- head
-                        , "GHC.Err" -- undefined
-                        , "GHC.Maybe" -- Nothing/Just
-                        , "Data.Tuple" -- snd
-                        , "Data.Foldable" -- mapM_
-                        , "System.IO" -- print
                         ]
                     , packages = []
                     , preSource = Just "preSource"
