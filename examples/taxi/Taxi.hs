@@ -136,8 +136,8 @@ stringsToTrip s = error ("error in input: " ++ intercalate "," s)
 
 ----------------------------------------------------------------------------------------------------------------
 
-journeyChanges :: Stream ((UTCTime, UTCTime),[(Journey, Int)]) -> Stream ((UTCTime, UTCTime),[(Journey, Int)])
-journeyChanges (Event _ (Just val):r) = streamFilterAcc (\acc h -> if snd h == snd acc then acc else h) val (\h acc -> snd h /= snd acc) r
+--journeyChanges :: Stream ((UTCTime, UTCTime),[(Journey, Int)]) -> Stream ((UTCTime, UTCTime),[(Journey, Int)])
+--journeyChanges (Event _ (Just val):r) = streamFilterAcc (\acc h -> if snd h == snd acc then acc else h) val (\h acc -> snd h /= snd acc) r
 
 journeyChanges :: Stream ((UTCTime, UTCTime),[(Journey, Int)]) -> Stream ((UTCTime, UTCTime),[(Journey, Int)])
 journeyChanges s = streamFilterAcc (\_ h -> (False,h)) (True,undefined) testSndChange s
