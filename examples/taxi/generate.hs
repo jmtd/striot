@@ -14,6 +14,8 @@ opts = GenerateOpts { imports = imports defaultOpts ++
                         , "Control.Arrow" -- >>>
                         , "Control.Category" -- >>>, too!
                         , "GHC.List" -- head
+                        , "GHC.Err" -- undefined
+                        , "GHC.Maybe" -- Nothing/Just
                         , "Data.Tuple" -- snd
                         , "Data.Foldable" -- mapM_
                         , "System.IO" -- print
@@ -25,11 +27,12 @@ opts = GenerateOpts { imports = imports defaultOpts ++
 source = [| getLine >>= return . stringsToTrip . splitOn "," |]
 
 topk' = [| \w -> (let lj = last w in (pickupTime lj, dropoffTime lj), topk 10 w) |]
-filterDupes = [ [| \acc h -> if snd h == snd acc then acc else h |]
-              , [| (fromJust . value . head) s |]
-              , [| \h acc -> snd h /= snd acc |]
-              , [| tail s |]
+
+filterDupes = [ [| \_ h -> Just h |]
+              , [| Nothing |]
+              , [| \h wacc -> case wacc of Nothing -> True; Just acc -> snd h /= snd acc |]
               ]
+
 sink = [| mapM_ (print.show.fromJust.value) |]
 
 taxiQ1 :: StreamGraph
