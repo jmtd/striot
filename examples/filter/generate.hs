@@ -9,15 +9,7 @@ import Language.Haskell.TH
 import Control.Concurrent
 import System.Random
 
-opts = defaultOpts { imports  = imports defaultOpts ++ [ "System.Random"
-                                                       , "GHC.Conc.IO"
-                                                       , "System.IO"
-                                                       , "Text.Read"
-                                                       , "Data.Foldable"
-                                                       ]
-                 --, packages = ["random"]
-                   , rewrite  = True
-                   }
+opts = defaultOpts { rewrite = True }
 
 source = [| do
     i <- getStdRandom (randomR (1,10)) :: IO Int

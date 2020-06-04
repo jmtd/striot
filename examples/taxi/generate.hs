@@ -5,14 +5,13 @@
 import Striot.CompileIoT
 import Striot.StreamGraph
 import Algebra.Graph
+import Data.Time -- UTCTime(..)
+import Data.Maybe (fromJust)
+import Data.List.Split (splitOn)
 
 opts = GenerateOpts { imports = imports defaultOpts ++
                         [ "Taxi"
                         , "Data.Time" -- UTCTime(..)..
-                        , "Data.Maybe" -- fromJust
-                        , "Data.List.Split" -- splitOn
-                        , "Control.Arrow" -- >>>
-                        , "Control.Category" -- >>>, too!
                         ]
                     , packages = []
                     , preSource = Just "preSource"
@@ -31,16 +30,16 @@ sink = [| mapM_ (print.show.fromJust.value) |]
 
 taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
-    [ (Source,    [source],                             "Trip")
-    , (Window,    [[| tripTimes |]],                    "[Trip]")
-    , (Expand,    [],                                "Trip")
-    , (Map,       [[| tripToJourney |]],               "Journey")
+    [ (Source,    [source],                         "Trip")
+    , (Window,    [[| tripTimes |]],                "[Trip]")
+    , (Expand,    [],                               "Trip")
+    , (Map,       [[| tripToJourney |]],            "Journey")
     , (Filter,    [[| \j -> inRangeQ1 (start j) |]],"Journey")
     , (Filter,    [[| \j -> inRangeQ1 (end j) |]],  "Journey")
-    , (Window,    [[| slidingTime 1800000 |]],       "[Journey]")
+    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]")
     , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (FilterAcc, filterDupes,                          "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (Sink,      [sink],                               "((UTCTime,UTCTime),[(Journey,Int)])")
+    , (FilterAcc, filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])")
+    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])")
     ]
 
 parts = [[1..7],[8],[9..10]]
