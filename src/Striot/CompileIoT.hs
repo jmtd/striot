@@ -13,7 +13,6 @@ module Striot.CompileIoT ( createPartitions
                          , optimiseWriteOutAll
 
                          , optimise
-                         , showParam
                          , generateCodeFromStreamGraph
                          , nodeFn
                          , nodeType
