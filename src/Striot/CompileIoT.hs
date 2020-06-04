@@ -343,7 +343,7 @@ generateNodeSrc partId nodes opts parts = let
        Nothing -> ""
        Just f  -> f ++ "\n  "
 
-    in "main = do\n  " ++ (showParam [|
+    in "main = do\n  " ++ pref ++ (showParam [|
         nodeSource (defaultSource $(litE (StringL host))
                                   $(litE (StringL (show port))))
                    src1 streamGraphFn
