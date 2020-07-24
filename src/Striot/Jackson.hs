@@ -1,11 +1,12 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
 
-module Striot.Jackson ( arrivalRate
-                      , utilisation
-                      , avgeResponseTime
-                      , avgeTimeInQueue
-                      , avgeNumberOfCustomersInSystem
-                      , JacksonParams
+module Striot.Jackson ( OperatorInfo(..)
+                      , calcAll
+
+                      , calcPropagationArray
+                      , calcInputs
+                      , JacksonParams(..)
+
                       ) where
 
 -- import FunctionalIoTtypes
@@ -65,6 +66,9 @@ v_take max v = listArray (1,max) $ [v Data.Array.! row |row <- [1..max]]
 
 -- Jackson Network: lambda = (I-P')^(-1)a where a = (alpha.p0i)i=1..J
 arrivalRate:: Array (Int, Int) Double -> Array Int Double -> Double -> Array Int Double  
+-- p - selectivities of filters
+-- p0i - distribution of input events into the system (i.e. to which nodes, which are the source nodes)
+-- alpha- arrival rate into the system
 arrivalRate p p0i alpha =  mv_mult (inverse $ mm_subtract (identity p) (m_trans p)) aa
                                where aa = va_mult p0i alpha
   
@@ -238,7 +242,8 @@ taxiQ1 = simpleStream
 taxiQ1arrivalRate' = 1.2 -- arrival rate into the system
 taxiQ1selectivity = [ (3, 0.95) -- nodeId 2 (filter), selectivity
                     , (6, 0.1) ] :: [(Int, Double)]
--- distribution of arriving events across source nodes: infer, there's just one
+-- distribution of arriving events across source nodes
+taxiQ1inputDistribution = [ (1, 1.0) ] :: [(Int, Double)]
 
 -- | Calculate the P propagation array for a StreamGraph based on its
 -- filter selectivity map.
@@ -255,6 +260,17 @@ calcPropagationArray g selectivity = let
 
 test_calcPropagationArray = assertEqual taxiQ1Array $
     calcPropagationArray taxiQ1 taxiQ1selectivity
+
+-- | Calculate an Inputs array from a StreamGraph (whether a node is a Source
+-- or not)
+calcInputs :: StreamGraph -> Array Int Double
+calcInputs sg = let
+    vl = init (vertexList sg) -- ignore sink node
+    n  = length vl
+    ms = map (\v -> if operator v == Source then 1 else 0) vl
+    in listArray (1,n) $ ms
+
+test_calcInputs = assertEqual taxiQ1Inputs $ calcInputs taxiQ1
 
 -- we need to know:
 --  • the arrival rate into the system
@@ -288,10 +304,10 @@ taxiQ1arrivalRates' = let
 main = htfMain htf_thisModulesTests
 
 -- wrap up all the inputs into a single type
-data JacksonParams = JacksonParams { jacksonPropagation      :: Array (Int,Int) Double
-                                   , jacksonMeanServiceTimes :: Array Int Double
-                                   , jacksonIncomingRate     :: Double
-                                   , jacksonInputs           :: Array Int Double
+data JacksonParams = JacksonParams { -- arrival rates into the system
+                                     jacksonArrivalRate      :: Double
+                                   -- distribution of the above across input nodes
+                                   , jacksonDistribution     :: [(Int, Double)]
+                                   -- filter-type operator selectivities
+                                   , jacksonSelectivity      :: [(Int, Double)]
                                    }
-
-taxiParams = JacksonParams taxiQ1Array taxiQ1meanServiceTimes 1.2 taxiQ1Inputs
