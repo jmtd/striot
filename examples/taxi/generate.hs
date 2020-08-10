@@ -1,14 +1,19 @@
+{-# LANGUAGE TemplateHaskell #-}
 {-
     generate.hs for Taxi Q1
 -}
 
 import Striot.CompileIoT
 import Striot.StreamGraph
-import Striot.Jackson
 import Algebra.Graph
 import Data.Time -- UTCTime(..)
 import Data.Maybe (fromJust)
 import Data.List.Split (splitOn)
+
+import Data.Array -- cabal install array
+import Striot.Jackson
+
+import Striot.VizGraph
 
 opts = GenerateOpts { imports = imports defaultOpts ++
                         [ "Taxi"
@@ -18,7 +23,7 @@ opts = GenerateOpts { imports = imports defaultOpts ++
                         ]
                     , packages = []
                     , preSource = Just "preSource"
-                    , rewrite = True
+                    , rewrite = False
                     }
 source = [| getLine >>= return . stringsToTrip . splitOn "," |]
 
@@ -68,3 +73,11 @@ taxiQ1Calc = calcAll taxiQ1Array taxiQ1Inputs taxiQ1arrivalRate taxiQ1meanServic
 
 -- wrapping the above up for convenience
 taxiParams = JacksonParams taxiQ1arrivalRate taxiQ1inputDistribution taxiQ1selectivity
+
+------------------------------------------------------------------------------
+-- applying the above
+
+allThreeNodePartitionings = filter ((==3) . length) (allPartitions taxiQ1)
+allThreeNodeSubGraphs = map (\pm -> createPartitions taxiQ1 pm) allThreeNodePartitionings
+-- partitions are backwards, i.e. [[7],[6],[5,4,3,2,1]], does that matter?
+-- Doesn't seem to

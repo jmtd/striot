@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -F -pgmF htfpp #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Striot.Jackson ( OperatorInfo(..)
                       , calcAll
@@ -231,14 +232,22 @@ prop_identity = do
 -- above (fused filters; remove the window/expand hack for fixing up timestamps)
 taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
-    [ (Source,    ["source"],                           "Trip")
-    , (Map,       ["tripToJourney", "s"],               "Journey")
-    , (Filter,    ["(\\j -> inRangeQ1 (start j) && inRangeQ1 (end j))", "s"],"Journey")
-    , (Window,    ["(slidingTime 1800000)", "s"],       "[Journey]")
-    , (Map,       ["topk", "s"],                        "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (FilterAcc, ["filterDupes"],                      "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (Sink,      ["sink"],                             "((UTCTime,UTCTime),[(Journey,Int)])")
+    [ (Source,    [source],                         "Trip")
+    , (Map,       [[| tripToJourney |]],            "Journey")
+    , (Filter,    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey")
+    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]")
+    , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])")
+    , (FilterAcc, filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])")
+    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])")
     ]
+sink = [| mapM_ (print.show.fromJust.value) |]
+source = [| getLine >>= return . stringsToTrip . splitOn "," |]
+topk' = [| \w -> (let lj = last w in (pickupTime lj, dropoffTime lj), topk 10 w) |]
+filterDupes = [ [| \_ h -> Just h |]
+              , [| Nothing |]
+              , [| \h wacc -> case wacc of Nothing -> True; Just acc -> snd h /= snd acc |]
+              ]
+
 taxiQ1arrivalRate' = 1.2 -- arrival rate into the system
 taxiQ1selectivity = [ (3, 0.95) -- nodeId 2 (filter), selectivity
                     , (6, 0.1) ] :: [(Int, Double)]
