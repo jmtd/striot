@@ -156,7 +156,7 @@ taxiQ1Inputs = listArray (1,6) $ [1,0,0,0,0,0] -- all events in the input stream
 -- the longest service time is window in the former case and map in the latter
 -- I'm guessing it's window and this is modelling the buffering time
 taxiQ1meanServiceTimes:: Array Int Double
-taxiQ1meanServiceTimes = listArray (1,6) [0.0001,0.0001,0.0001,0.01,0.0001,0.0001]
+taxiQ1meanServiceTimes = listArray (1,6) [0.0001,0.0001,0.0001,0.9,0.0001,0.0001]
 
  
 taxiQ1arrivalRates:: Array Int Double
