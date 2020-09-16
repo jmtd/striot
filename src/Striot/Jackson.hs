@@ -8,7 +8,7 @@ module Striot.Jackson ( OperatorInfo(..)
                       , calcInputs
                       , JacksonParams(..)
 
-                      ) where
+                      , htf_thisModulesTests) where
 
 -- import FunctionalIoTtypes
 -- import FunctionalProcessing
