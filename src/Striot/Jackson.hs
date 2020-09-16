@@ -234,13 +234,13 @@ prop_identity = do
 -- above (fused filters; remove the window/expand hack for fixing up timestamps)
 taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
-    [ (Source,    [source],                         "Trip")
-    , (Map,       [[| tripToJourney |]],            "Journey")
-    , (Filter,    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey")
-    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]")
-    , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (FilterAcc, filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])")
+    [ (Source,    [source],                         "Trip", 0)
+    , (Map,       [[| tripToJourney |]],            "Journey", 1)
+    , (Filter,    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 2)
+    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]", 3)
+    , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])", 4)
+    , (FilterAcc, filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])" , 5)
+    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])", 6)
     ]
 sink = [| mapM_ (print.show.fromJust.value) |]
 source = [| getLine >>= return . stringsToTrip . splitOn "," |]
