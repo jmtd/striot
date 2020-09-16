@@ -107,5 +107,4 @@ test-suite test-striot
                       Striot.StreamGraph
                       Striot.VizGraph
                       Striot.Jackson
-                      VizGraph
   default-language:   Haskell2010
