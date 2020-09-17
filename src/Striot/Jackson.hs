@@ -236,10 +236,10 @@ taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
     [ (Source,    [source],                         "Trip", 0)
     , (Map,       [[| tripToJourney |]],            "Journey", 1)
-    , (Filter,    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 2)
+    , ((Filter 0.5),    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 2)
     , (Window,    [[| slidingTime 1800000 |]],      "[Journey]", 3)
     , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])", 4)
-    , (FilterAcc, filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])" , 5)
+    , ((FilterAcc 0.5), filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])" , 5)
     , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])", 6)
     ]
 sink = [| mapM_ (print.show.fromJust.value) |]
