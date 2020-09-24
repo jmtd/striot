@@ -358,7 +358,9 @@ paren :: String -> String
 paren s = "("++s++")"
 
 printOp :: StreamOperator -> String
-printOp = (++) "stream" . show
+printOp (Filter _) = "streamFilter"
+printOp (FilterAcc _) = "streamFilterAcc"
+printOp op = "stream" ++ (show op)
 
 -- how many incoming edges to this partition?
 -- + how many source nodes
