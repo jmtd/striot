@@ -38,16 +38,16 @@ sink = [| mapM_ (print.show.fromJust.value) |]
 
 taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
-    [ (Source,    [source],                         "Trip")
-    , (Map,       [[| tripToJourney |]],            "Journey")
-    , (Filter,    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey")
-    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]")
-    , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (FilterAcc, filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])")
-    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])")
+    [ (Source,    [source],                         "Trip", 0)
+    , (Map,       [[| tripToJourney |]],            "Journey", 1)
+    , ((Filter 0.5),    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 1)
+    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]", 1)
+    , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])", 1)
+    , ((FilterAcc 0.5), filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])", 1)
+    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])", 0)
     ]
 
-parts = [[1..7],[8],[9..10]]
+parts = [[1..4],[5],[6..7]]
 
 main = partitionGraph taxiQ1 parts opts
 
