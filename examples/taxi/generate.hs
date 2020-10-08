@@ -56,8 +56,6 @@ main = partitionGraph taxiQ1 parts opts
 
 -- data needed. Could be folded into the StreamVertex or PartitionMap types.
 taxiQ1arrivalRate = 1.2 -- arrival rate into the system
-taxiQ1selectivity = [ (3, 0.95) -- nodeId 2 (filter), selectivity
-                    , (6, 0.1) ] :: [(Int, Double)]
 -- distribution of arriving events across source nodes
 taxiQ1inputDistribution = [ (1, 1.0) ] :: [(Int, Double)]
 
@@ -65,14 +63,14 @@ taxiQ1meanServiceTimes:: Array Int Double
 taxiQ1meanServiceTimes = listArray (1,6) [0.0001,0.0001,0.0001,0.01,0.0001,0.0001]
 
 -- derived (could be hidden)
-taxiQ1Array = calcPropagationArray taxiQ1 taxiQ1selectivity
+taxiQ1Array = calcPropagationArray taxiQ1
 taxiQ1Inputs = calcInputs taxiQ1
 
 taxiQ1Calc:: [OperatorInfo]
 taxiQ1Calc = calcAll taxiQ1Array taxiQ1Inputs taxiQ1arrivalRate taxiQ1meanServiceTimes
 
 -- wrapping the above up for convenience
-taxiParams = JacksonParams taxiQ1arrivalRate taxiQ1inputDistribution taxiQ1selectivity
+taxiParams = JacksonParams taxiQ1arrivalRate taxiQ1inputDistribution
 
 ------------------------------------------------------------------------------
 -- applying the above

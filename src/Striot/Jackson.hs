@@ -5,7 +5,6 @@ module Striot.Jackson ( OperatorInfo(..)
                       , calcAll
 
                       , calcPropagationArray
-                      , calcPropagationArray'
                       , calcInputs
                       , JacksonParams(..)
 
@@ -252,28 +251,13 @@ filterDupes = [ [| \_ h -> Just h |]
               ]
 
 taxiQ1arrivalRate' = 1.2 -- arrival rate into the system
-taxiQ1selectivity = [ (3, 0.95) -- nodeId 2 (filter), selectivity
-                    , (6, 0.1) ] :: [(Int, Double)]
 -- distribution of arriving events across source nodes
 taxiQ1inputDistribution = [ (1, 1.0) ] :: [(Int, Double)]
 
 -- | Calculate the P propagation array for a StreamGraph based on its
 -- filter selectivity map.
-calcPropagationArray :: StreamGraph -> [(Int, Double)] -> Array (Int, Int) Double
-calcPropagationArray g selectivity = let
-    vl = vertexList g
-    el = map (\(x,y) -> (vertexId x, vertexId y)) (edgeList g)
-    look v (f,t) = if   f == vertexId v
-                   then fromMaybe 1 $ lookup (vertexId v) selectivity
-                   else 0
-    m = length vl - 1 -- XXX adjusting for 1 Source node
-    in listArray ((1,1),(m,m)) $ concatMap (\v -> map (look v) el) (tail vl)
-    --                              XXX adjusting for 1 Source node ^^^^
-
--- | Calculate the P propagation array for a StreamGraph based on its
--- filter selectivity map.
-calcPropagationArray' :: StreamGraph -> Array (Int, Int) Double
-calcPropagationArray' g = let
+calcPropagationArray :: StreamGraph -> Array (Int, Int) Double
+calcPropagationArray g = let
     vl = vertexList g
     el = map (\(x,y) -> (vertexId x, vertexId y)) (edgeList g)
     look v (f,t) = if   f == vertexId v
@@ -287,11 +271,7 @@ calcPropagationArray' g = let
     --                              XXX adjusting for 1 Source node ^^^^
 
 test_calcPropagationArray = assertEqual taxiQ1Array $
-    calcPropagationArray taxiQ1 taxiQ1selectivity
-
-test_calcPropagationArray2 = assertEqual
-    (calcPropagationArray taxiQ1 taxiQ1selectivity)
-    (calcPropagationArray' taxiQ1)
+    calcPropagationArray taxiQ1
 
 -- | Calculate an Inputs array from a StreamGraph (whether a node is a Source
 -- or not)
@@ -340,6 +320,4 @@ data JacksonParams = JacksonParams { -- arrival rates into the system
                                      jacksonArrivalRate      :: Double
                                    -- distribution of the above across input nodes
                                    , jacksonDistribution     :: [(Int, Double)]
-                                   -- filter-type operator selectivities
-                                   , jacksonSelectivity      :: [(Int, Double)]
                                    }
