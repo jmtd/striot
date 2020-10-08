@@ -7,7 +7,10 @@ module Striot.Jackson ( OperatorInfo(..)
                       , arrivalRate
                       , arrivalRate'
 
-                      , calcPropagationArray
+                      , derivePropagationArray
+                      , deriveServiceTimes
+                      , deriveArrivals
+                      , calcAllSg
 
                       , htf_thisModulesTests) where
 
@@ -21,7 +24,6 @@ import Test.Framework
 import Data.Maybe (fromMaybe)
 
 import Striot.StreamGraph
-import Striot.CompileIoT
 
 import Algebra.Graph
 
@@ -220,6 +222,9 @@ test6 = mm_subtract ex1 ex1
 test7 = m_trans ex1
 test8 = mm_subtract (identity ex1) (m_trans ex1)
 
+------------------------------------------------------------------------------
+-- HTF tests (TODO: convert the above)
+
 prop_identity = do
     n <- vectorOf 9 arbitrary :: Gen [Double]
     return $ identity (listArray shape n)
@@ -230,37 +235,18 @@ prop_identity = do
             ] :: [Double])
     where shape = ((1,1),(3,3))
 
+main = htfMain htf_thisModulesTests
+
 ------------------------------------------------------------------------------
--- convert a streamgraph into an adjacency matrix
-
--- copied from examples/taxi/generate.hs, adjusted to match the simplied version
--- above (fused filters; remove the window/expand hack for fixing up timestamps)
-taxiQ1 :: StreamGraph
-taxiQ1 = simpleStream
-    [ (( Source 1.2),    [source],                         "Trip", 0)
-    , (Map,       [[| tripToJourney |]],            "Journey", 1)
-    , ((Filter 0.95),    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 2)
-    , (Window,    [[| slidingTime 1800000 |]],      "[Journey]", 3)
-    , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])", 4)
-    , ((FilterAcc 0.1), filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])" , 5)
-    , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])", 6)
-    ]
-sink = [| mapM_ (print.show.fromJust.value) |]
-source = [| getLine >>= return . stringsToTrip . splitOn "," |]
-topk' = [| \w -> (let lj = last w in (pickupTime lj, dropoffTime lj), topk 10 w) |]
-filterDupes = [ [| \_ h -> Just h |]
-              , [| Nothing |]
-              , [| \h wacc -> case wacc of Nothing -> True; Just acc -> snd h /= snd acc |]
-              ]
-
-taxiQ1arrivalRate' = 1.2 -- arrival rate into the system
--- distribution of arriving events across source nodes
-taxiQ1inputDistribution = [ (1, 1.0) ] :: [(Int, Double)]
-
+-- derive* functions to convert the Jackson parameters embedded in the
+-- StreamGraph into a form that Jackson code accepts. These should be
+-- temporary, and merged/refactored as part of the Jackson code at a
+-- later date.
+--
 -- | Calculate the P propagation array for a StreamGraph based on its
 -- filter selectivities.
-calcPropagationArray :: StreamGraph -> Array (Int, Int) Double
-calcPropagationArray g = let
+derivePropagationArray :: StreamGraph -> Array (Int, Int) Double
+derivePropagationArray g = let
     vl = vertexList g
     el = map (\(x,y) -> (vertexId x, vertexId y)) (edgeList g)
     look v (f,t) = if   f == vertexId v
@@ -271,38 +257,27 @@ calcPropagationArray g = let
                    else 0
     m = length vl - 1 -- XXX adjusting for 1 Source node
     in listArray ((1,1),(m,m)) $ concatMap (\v -> map (look v) el) (tail vl)
-    --                              XXX adjusting for 1 Source node ^^^^
 
-test_calcPropagationArray = assertEqual taxiQ1Array $
-    calcPropagationArray taxiQ1
 
--- we need to know:
---  • the arrival rate into the system
---  • the distribution of arriving events amongst source nodes (taxiQ1Inputs), sums to 1
---  • the distribution of inputs (summing to 1): for one source node, just '1' for that node
---    the probability of routing events from one node to another (so, largely similar to an
---    identity matrix, with guaranteed routing between the nodes of the path down the diagonal,
---    but non-1 for filters) — taxiQ1Array
---
---          this can be largely inferred except for filter selectivity from the
---          graph topology. But we need the user to specify the selectivity somehow.
---          if not in the graph types, then is there any point having something other
---          than the whole matrix?
+deriveArrivals :: StreamGraph -> Array Int Double
+deriveArrivals sg = let
+    vl = init $ vertexList sg -- XXX trimming the Sink node
+    n = length vl
+    a = map (\v -> case operator v of
+                Source x -> x
+                _        -> 0) vl
+    in listArray (1,n) a
 
--- let's perhaps focus just on arrivalRates for now
---
---      requires the routing matrix (taxiQ1Array) and the top-level arrivalrate
---      constant 
+-- | derive an Array of service times from a StreamGraph
+deriveServiceTimes :: StreamGraph -> Array Int Double
+deriveServiceTimes sg = let
+    vl = vertexList sg
+    m  = length vl - 1 -- XXX adjusting for 1 Source node
+    in listArray (1,m) $ map (Striot.StreamGraph.serviceTime) (tail vl) -- XXX adjusting for 1 Source node
 
--- try to produce something that is equal to taxiQ1arrivalRates
--- it's an array of length matching #nodes in graph, numbering from 1, with the
--- initial node arrival rate a constant , and the rest calculated from someting
--- else
-
-taxiQ1arrivalRates' = let
-    n = 1
-    m = length $ vertexList taxiQ1
-    a = 1.2 -- initial arrival rate
-    in arrivalRate taxiQ1Array taxiQ1Inputs a
-
-main = htfMain htf_thisModulesTests
+calcAllSg :: StreamGraph -> [OperatorInfo]
+calcAllSg sg = calcAll propagation arrivals services
+    where
+        propagation = derivePropagationArray sg
+        arrivals    = deriveArrivals sg
+        services    = deriveServiceTimes sg

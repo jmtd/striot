@@ -54,33 +54,7 @@ main = partitionGraph taxiQ1 parts opts
 ------------------------------------------------------------------------------
 -- jackson stuff
 
--- derive* functions to convert the Jackson parameters embedded in the
--- StreamGraph into a form that Jackson code accepts. These should be
--- temporary, and merged/refactored as part of the Jackson code at a
--- later date.
-
-deriveArrivals :: StreamGraph -> Array Int Double
-deriveArrivals sg = let
-    vl = init $ vertexList sg -- XXX trimming the Sink node
-    n = length vl
-    a = map (\v -> case operator v of
-                Source x -> x
-                _        -> 0) vl
-    in listArray (1,n) a
-
--- | derive an Array of service times from a StreamGraph
-deriveServiceTimes :: StreamGraph -> Array Int Double
-deriveServiceTimes sg = let
-    vl = vertexList sg
-    m = length vl - 1 -- XXX adjusting for 1 Source node
-    in listArray (1,m) $ map serviceTime (tail vl) -- XXX adjusting for 1 Source node
-
-taxiQ1Calc:: [OperatorInfo]
-taxiQ1Calc = calcAll taxiQ1Array arrivals services
-    where
-        taxiQ1Array = calcPropagationArray taxiQ1
-        arrivals = deriveArrivals taxiQ1
-        services = deriveServiceTimes taxiQ1
+taxiQ1Calc = calcAllSg taxiQ1
 
 ------------------------------------------------------------------------------
 -- applying the above
