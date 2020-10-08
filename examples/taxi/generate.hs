@@ -54,14 +54,12 @@ main = partitionGraph taxiQ1 parts opts
 ------------------------------------------------------------------------------
 -- jackson stuff
 
--- data needed. Could be folded into the StreamVertex or PartitionMap types.
-taxiQ1arrivalRate = 1.2 -- arrival rate into the system
--- distribution of arriving events across source nodes
-taxiQ1inputDistribution = [ (1, 1.0) ] :: [(Int, Double)]
+-- external arrival rates to nodes
+-- == va_mult (array (1,6) [(1,1.0), (2,0), …]) 1.2
+taxiQ1Arrivals = listArray (1,6) [1.2,0,0,0,0,0]
 
 -- derived (could be hidden)
 taxiQ1Array = calcPropagationArray taxiQ1
-taxiQ1Inputs = calcInputs taxiQ1
 
 -- | derive an Array of service times from a StreamGraph
 deriveServiceTimes :: StreamGraph -> Array Int Double
@@ -71,8 +69,7 @@ deriveServiceTimes sg = let
     in listArray (1,m) $ map serviceTime (tail vl) -- XXX adjusting for 1 Source node
 
 taxiQ1Calc:: [OperatorInfo]
-taxiQ1Calc = calcAll taxiQ1Array taxiQ1Inputs taxiQ1arrivalRate $
-    (deriveServiceTimes taxiQ1)
+taxiQ1Calc = calcAll taxiQ1Array (arrivalRate' taxiQ1Array taxiQ1Arrivals) (deriveServiceTimes taxiQ1)
 
 ------------------------------------------------------------------------------
 -- applying the above
