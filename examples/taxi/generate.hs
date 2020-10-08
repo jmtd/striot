@@ -74,9 +74,6 @@ taxiQ1Calc:: [OperatorInfo]
 taxiQ1Calc = calcAll taxiQ1Array taxiQ1Inputs taxiQ1arrivalRate $
     (deriveServiceTimes taxiQ1)
 
--- wrapping the above up for convenience
-taxiParams = JacksonParams taxiQ1arrivalRate taxiQ1inputDistribution
-
 ------------------------------------------------------------------------------
 -- applying the above
 

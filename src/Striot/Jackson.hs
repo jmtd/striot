@@ -6,7 +6,6 @@ module Striot.Jackson ( OperatorInfo(..)
 
                       , calcPropagationArray
                       , calcInputs
-                      , JacksonParams(..)
 
                       , htf_thisModulesTests) where
 
@@ -314,10 +313,3 @@ taxiQ1arrivalRates' = let
     in arrivalRate taxiQ1Array taxiQ1Inputs a
 
 main = htfMain htf_thisModulesTests
-
--- wrap up all the inputs into a single type
-data JacksonParams = JacksonParams { -- arrival rates into the system
-                                     jacksonArrivalRate      :: Double
-                                   -- distribution of the above across input nodes
-                                   , jacksonDistribution     :: [(Int, Double)]
-                                   }
