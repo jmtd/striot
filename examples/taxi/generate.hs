@@ -40,10 +40,10 @@ taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
     [ (Source,    [source],                         "Trip", 0)
     , (Map,       [[| tripToJourney |]],            "Journey", 1)
-    , ((Filter 0.5),    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 1)
+    , ((Filter 0.95),    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 1)
     , (Window,    [[| slidingTime 1800000 |]],      "[Journey]", 1)
     , (Map,       [topk'],                          "((UTCTime,UTCTime),[(Journey,Int)])", 1)
-    , ((FilterAcc 0.5), filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])", 1)
+    , ((FilterAcc 0.1), filterDupes,                      "((UTCTime,UTCTime),[(Journey,Int)])", 1)
     , (Sink,      [sink],                           "((UTCTime,UTCTime),[(Journey,Int)])", 0)
     ]
 
