@@ -54,12 +54,19 @@ main = partitionGraph taxiQ1 parts opts
 ------------------------------------------------------------------------------
 -- jackson stuff
 
--- external arrival rates to nodes
--- == va_mult (array (1,6) [(1,1.0), (2,0), …]) 1.2
-taxiQ1Arrivals = listArray (1,6) [1.2,0,0,0,0,0]
+-- derive* functions to convert the Jackson parameters embedded in the
+-- StreamGraph into a form that Jackson code accepts. These should be
+-- temporary, and merged/refactored as part of the Jackson code at a
+-- later date.
 
--- derived (could be hidden)
-taxiQ1Array = calcPropagationArray taxiQ1
+deriveArrivals :: StreamGraph -> Array Int Double
+deriveArrivals sg = let
+    vl = init $ vertexList sg -- XXX trimming the Sink node
+    n = length vl
+    a = map (\v -> case operator v of
+                Source x -> x
+                _        -> 0) vl
+    in listArray (1,n) a
 
 -- | derive an Array of service times from a StreamGraph
 deriveServiceTimes :: StreamGraph -> Array Int Double
@@ -69,7 +76,11 @@ deriveServiceTimes sg = let
     in listArray (1,m) $ map serviceTime (tail vl) -- XXX adjusting for 1 Source node
 
 taxiQ1Calc:: [OperatorInfo]
-taxiQ1Calc = calcAll taxiQ1Array (arrivalRate' taxiQ1Array taxiQ1Arrivals) (deriveServiceTimes taxiQ1)
+taxiQ1Calc = calcAll taxiQ1Array arrivals services
+    where
+        taxiQ1Array = calcPropagationArray taxiQ1
+        arrivals = deriveArrivals taxiQ1
+        services = deriveServiceTimes taxiQ1
 
 ------------------------------------------------------------------------------
 -- applying the above
