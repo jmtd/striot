@@ -8,7 +8,6 @@ module Striot.Jackson ( OperatorInfo(..)
                       , arrivalRate'
 
                       , calcPropagationArray
-                      , calcInputs
 
                       , htf_thisModulesTests) where
 
@@ -276,17 +275,6 @@ calcPropagationArray g = let
 
 test_calcPropagationArray = assertEqual taxiQ1Array $
     calcPropagationArray taxiQ1
-
--- | Calculate an Inputs array from a StreamGraph (whether a node is a Source
--- or not)
-calcInputs :: StreamGraph -> [(Int, Double)] -> Array Int Double
-calcInputs sg distrib = let
-    vl = init (vertexList sg) -- ignore sink node
-    n  = length vl
-    ms = map (\v -> fromMaybe 0 $ lookup (vertexId v) distrib) vl
-    in listArray (1,n) $ ms
-
-test_calcInputs = assertEqual taxiQ1Inputs $ calcInputs taxiQ1 [(1,1.0)]
 
 -- we need to know:
 --  • the arrival rate into the system
