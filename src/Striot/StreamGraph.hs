@@ -87,7 +87,7 @@ data StreamOperator = Map
                     | Join
                     | Scan
                     | FilterAcc Double -- selectivity
-                    | Source
+                    | Source Double -- arrival rate
                     | Sink
                     deriving (Show,Ord,Eq)
 
@@ -101,7 +101,7 @@ instance Arbitrary StreamOperator where
     arbitrary = do
         d <- arbitrary
         elements [ Map , Filter d, Expand , Window , Merge , Join , Scan
-                       , FilterAcc d, Source , Sink ]
+                       , FilterAcc d, Source d, Sink ]
 
 instance Arbitrary StreamVertex where
     arbitrary = do

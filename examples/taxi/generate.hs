@@ -38,7 +38,7 @@ sink = [| mapM_ (print.show.fromJust.value) |]
 
 taxiQ1 :: StreamGraph
 taxiQ1 = simpleStream
-    [ (Source,    [source],                         "Trip", 0)
+    [ ((Source 1.2),    [source],                         "Trip", 0)
     , (Map,       [[| tripToJourney |]],            "Journey", 0.0001)
     , ((Filter 0.95),    [[| \j -> inRangeQ1 (start j) && inRangeQ1 (end j) |]],"Journey", 0.0001)
     , (Window,    [[| slidingTime 1800000 |]],      "[Journey]", 0.0001)
