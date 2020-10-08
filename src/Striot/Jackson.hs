@@ -174,7 +174,7 @@ taxiQ1avgeTimeInQueue = avgeTimeInQueue   taxiQ1arrivalRates taxiQ1meanServiceTi
 
 data OperatorInfo = OperatorInfo { opId        :: Int
                                  , arrRate     :: Double
-                                 , serviceTime :: Double
+                                 , serviceTime :: Double -- XXX rename, clashes with StreamGraph
                                  , util        :: Double
                                  , stab        :: Bool
                                  , custInSys   :: Double
@@ -255,7 +255,7 @@ taxiQ1arrivalRate' = 1.2 -- arrival rate into the system
 taxiQ1inputDistribution = [ (1, 1.0) ] :: [(Int, Double)]
 
 -- | Calculate the P propagation array for a StreamGraph based on its
--- filter selectivity map.
+-- filter selectivities.
 calcPropagationArray :: StreamGraph -> Array (Int, Int) Double
 calcPropagationArray g = let
     vl = vertexList g
