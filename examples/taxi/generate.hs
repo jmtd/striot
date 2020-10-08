@@ -57,9 +57,10 @@ main = partitionGraph taxiQ1 parts opts
 taxiQ1Calc = calcAllSg taxiQ1
 
 ------------------------------------------------------------------------------
--- applying the above
+-- some cost model experiments
 
-allThreeNodePartitionings = filter ((==3) . length) (allPartitions taxiQ1)
-allThreeNodeSubGraphs = map (\pm -> createPartitions taxiQ1 pm) allThreeNodePartitionings
--- partitions are backwards, i.e. [[7],[6],[5,4,3,2,1]], does that matter?
--- Doesn't seem to
+costModelStuff = let
+    allOpts = allOptimisations taxiQ1
+
+    -- are there any graphs which breach utilisation?
+    anyBreach = map and $ concatMap snd $ map (\(x,y) -> (x, map ((>=1).util) y)) $ allOpts
