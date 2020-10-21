@@ -9,6 +9,7 @@ import Algebra.Graph
 import Data.Time -- UTCTime(..)
 import Data.Maybe (fromJust)
 import Data.List.Split (splitOn)
+import Data.Function ((&))
 
 import Data.Array -- cabal install array
 import Striot.Jackson hiding (serviceTime)
@@ -63,4 +64,9 @@ costModelStuff = let
     allOpts = allOptimisations taxiQ1
 
     -- are there any graphs which breach utilisation?
-    anyBreach = map and $ concatMap snd $ map (\(x,y) -> (x, map ((>=1).util) y)) $ allOpts
+    anyBreach'= allOpts
+              & map (\(x,y) -> (x, map ((>=1).util) y))
+              & concatMap snd
+              & and
+
+    in ()
