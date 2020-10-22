@@ -47,6 +47,10 @@ escape (x:xs) = case x of
     '\\' -> '\\':'\\': escape xs
     _    -> x        : escape xs
 
+test_escape_1 = assertEqual "no escaping"        $ escape ("no escaping")
+test_escape_2 = assertEqual "escaped \\\" quote" $ escape ("escaped \" quote")
+test_escape_3 = assertEqual "escaped \\\\ backslash" $ escape ("escaped \\ backslash")
+
 -- test data
 
 source x = [| do
