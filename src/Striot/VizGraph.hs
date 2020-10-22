@@ -42,7 +42,10 @@ myStyle = Style
 
 -- escape a string, suitable for inclusion in a .dot file
 escape [] = []
-escape (x:xs) = if x == '"' then '\\':'"':(escape xs) else x:(escape xs)
+escape (x:xs) = case x of
+    '"'  -> '\\':'"' : escape xs
+    '\\' -> '\\':'\\': escape xs
+    _    -> x        : escape xs
 
 -- test data
 
