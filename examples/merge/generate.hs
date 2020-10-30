@@ -30,10 +30,10 @@ v3 = StreamVertex 3 (Source 1) [[| baz |]] "String" "String" 0
 
 v4 = StreamVertex 4 Merge [] "String" "String" 1
 
-v5 = StreamVertex 5 (Filter (2/3)) [[| beginsWithB |]] "String" "String" 1
-v6 = StreamVertex 6 (Filter (1/2)) [[| endsWithZ   |]] "String" "String" 1
+v5 = StreamVertex 5 Map [[| reverse |]] "String" "String" 1
+v6 = StreamVertex 6 Map [[| map toUpper |]] "String" "String" 1
 
-v6' = StreamVertex 6 (Filter (2/6)) [[| \e -> beginsWithB e && endsWithZ e |]] "String" "String" 2
+v6' = StreamVertex 6 Map [[| map toUpper . reverse |]] "String" "String" 2
 
 -- XXX: ^ we lie about the input type here, because the generated function has split-out arguments
 v7 = StreamVertex 7 Sink [[| mapM_ print |]] "String" "IO ()" 0
@@ -44,4 +44,4 @@ graph'= (overlays (map vertex [v1,v2,v3]) `connect` (vertex v4)) `overlay` path 
 
 parts = [[1],[2],[3],[4,5,6,7]]
 
-main = partitionGraph graph parts (defaultOpts { imports = "Merge" : imports defaultOpts })
+main = partitionGraph graph parts (defaultOpts { imports = "Merge" : imports defaultOpts , rewrite = False})
