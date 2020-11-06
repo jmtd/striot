@@ -273,7 +273,7 @@ deriveServiceTimes :: StreamGraph -> Array Int Double
 deriveServiceTimes sg = let
     vl = vertexList sg
     m  = length vl - 1 -- XXX adjusting for 1 Source node
-    in listArray (1,m) $ map (Striot.StreamGraph.serviceTime) (tail vl) -- XXX adjusting for 1 Source node
+    in listArray (1,m) $ map (\v -> 1 / Striot.StreamGraph.serviceRate v) (tail vl) -- XXX adjusting for 1 Source node
 
 calcAllSg :: StreamGraph -> [OperatorInfo]
 calcAllSg sg = calcAll propagation arrivals services
