@@ -752,7 +752,10 @@ test_mergeFuse = assertEqual (applyRule mergeFuse mergeFusePre) mergeFusePost
 -- utility/boilerplate -------------------------------------------------------
 
 sumRates :: Double -> Double -> Double
-sumRates a b = 1 / ((1 / a) + (1 / 2))
+sumRates a b = 1 / ((1 / a) + (1 / b))
+
+test_sumRates1 = assertEqual 1 $ sumRates 2 2
+test_sumRates2 = assertEqual 2 $ sumRates 4 4
 
 -- compare operators, ignoring filter selectivity
 cmpOps :: StreamOperator -> StreamOperator -> Bool
