@@ -40,8 +40,7 @@ rewritten  = graph & fromJust (firstMatch graph filterMerge)
 test_opIds = assertEqual [1,4,5] $ map opId (calcAllSg rewritten)
 
 isOverUtilised :: StreamGraph -> Bool
-isOverUtilised g = 
-    g & calcAllSg & map util & map (>1) & or
+isOverUtilised = any (>1) . map util . calcAllSg
 
 test_isOverUtilised = assertBool $ isOverUtilised rewritten
 
