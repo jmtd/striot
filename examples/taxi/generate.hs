@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -F -pgmF htfpp #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-
     generate.hs for Taxi Q1
@@ -13,6 +14,8 @@ import Data.Function ((&))
 
 import Data.Array -- cabal install array
 import Striot.Jackson hiding (serviceTime)
+
+import Test.Framework
 
 import Striot.VizGraph
 
@@ -55,7 +58,7 @@ main = partitionGraph taxiQ1 parts opts
 ------------------------------------------------------------------------------
 -- jackson stuff
 
-taxiQ1Calc = calcAllSg taxiQ1
+--taxiQ1Calc = calcAllSg taxiQ1
 
 ------------------------------------------------------------------------------
 -- some cost model experiments
@@ -64,9 +67,18 @@ costModelStuff = let
     allOpts = allOptimisations taxiQ1
 
     -- are there any graphs which breach utilisation?
+    -- -- there's a better definition of this somewhere in the overUt exmaple
     anyBreach'= allOpts
               & map (\(x,y) -> (x, map ((>=1).util) y))
               & concatMap snd
               & and
-
     in ()
+
+------------------------------------------------------------------------------
+-- capture some of the problems we've got
+
+test_propArray  = assertEqual taxiQ1Array $ derivePropagationArray taxiQ1
+test_inputsArr  = assertEqual taxiQ1Inputs $ deriveInputsArray taxiQ1 1.2
+test_serviceArr = assertEqual taxiQ1meanServiceTimes $ deriveServiceTimes taxiQ1
+
+test_sgEquiv    = assertEqual taxiQ1Calc $ calcAllSg taxiQ1

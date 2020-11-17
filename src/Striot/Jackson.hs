@@ -9,8 +9,19 @@ module Striot.Jackson ( OperatorInfo(..)
 
                       , derivePropagationArray
                       , deriveServiceTimes
-                      , deriveArrivals
+                      , deriveInputsArray
                       , calcAllSg
+
+
+                      -- defined
+                      , taxiQ1Array
+                      , taxiQ1Inputs
+                      , taxiQ1meanServiceTimes
+                      -- calculated
+                      , taxiQ1arrivalRates
+                      , taxiQ1utilisation
+                      , taxiQ1Calc
+
 
                       , htf_thisModulesTests) where
 
@@ -162,7 +173,7 @@ taxiQ1Inputs = listArray (1,6) $ [1,0,0,0,0,0] -- all events in the input stream
 -- the longest service time is window in the former case and map in the latter
 -- I'm guessing it's window and this is modelling the buffering time
 taxiQ1meanServiceTimes:: Array Int Double
-taxiQ1meanServiceTimes = listArray (1,6) [0.0001,0.0001,0.0001,0.9,0.0001,0.0001]
+taxiQ1meanServiceTimes = listArray (1,6) [0.0001,0.0001,0.0001,0.01,0.0001,0.0001]
 
  
 taxiQ1arrivalRates:: Array Int Double
@@ -259,12 +270,15 @@ derivePropagationArray g = let
     in listArray ((1,1),(m,m)) $ concatMap (\v -> map (look v) el) (tail vl)
 
 
-deriveArrivals :: StreamGraph -> Array Int Double
-deriveArrivals sg = let
-    vl = init $ vertexList sg -- XXX trimming the Sink node
+-- | calculate an array of external input arrival probabilities
+deriveInputsArray :: StreamGraph -> Double -> Array Int Double
+deriveInputsArray sg totalArrivalRate = let
+    vl = init $ vertexList sg -- XXX trimming the Sink node. This is incorrect. We need to trm the source node.
+    -- but, all arrivals into nodes immediately after a source node are considered to receive the sources. So this
+    -- "works" for simple graph topologies with a single source node at the start of the vertex list.
     n = length vl
     a = map (\v -> case operator v of
-                Source x -> x
+                Source x -> x / totalArrivalRate
                 _        -> 0) vl
     in listArray (1,n) a
 
@@ -278,6 +292,8 @@ deriveServiceTimes sg = let
 calcAllSg :: StreamGraph -> [OperatorInfo]
 calcAllSg sg = calcAll propagation arrivals services
     where
-        propagation = derivePropagationArray sg
-        arrivals    = deriveArrivals sg
-        services    = deriveServiceTimes sg
+        propagation      = derivePropagationArray sg
+        totalArrivalRate = sum $ map (\(Source x) -> x) $ filter isSource $ map operator $ vertexList sg
+        inputs           = deriveInputsArray sg totalArrivalRate
+        services         = deriveServiceTimes sg
+        arrivals         = arrivalRate propagation inputs totalArrivalRate
