@@ -12,7 +12,6 @@ module Striot.Jackson ( OperatorInfo(..)
                       , deriveInputsArray
                       , calcAllSg
 
-
                       -- defined
                       , taxiQ1Array
                       , taxiQ1Inputs
@@ -32,7 +31,7 @@ import Matrix.LU -- cabal install dsp
 import Matrix.Matrix
 import Data.List
 import Test.Framework
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 
 import Striot.StreamGraph
 
@@ -84,6 +83,7 @@ arrivalRate:: Array (Int, Int) Double -> Array Int Double -> Double -> Array Int
 -- p - selectivities of filters
 -- p0i - distribution of input events into the system (i.e. to which nodes, which are the source nodes)
 -- alpha- arrival rate into the system
+-- XXX throwing a run-time exception when called via calcAllSg, for zeroth element
 arrivalRate p p0i alpha = arrivalRate' p aa
                               where aa = va_mult p0i alpha
 
@@ -258,36 +258,48 @@ main = htfMain htf_thisModulesTests
 -- filter selectivities.
 derivePropagationArray :: StreamGraph -> Array (Int, Int) Double
 derivePropagationArray g = let
-    vl = vertexList g
+    vl = map (\v -> (vertexId v, v)) (vertexList g)
     el = map (\(x,y) -> (vertexId x, vertexId y)) (edgeList g)
-    look v (f,t) = if   f == vertexId v
-                   then case operator v of
-                             (Filter x)    -> x
-                             (FilterAcc x) -> x
-                             _             -> 1
-                   else 0
-    m = length vl - 1 -- XXX adjusting for 1 Source node
-    in listArray ((1,1),(m,m)) $ concatMap (\v -> map (look v) el) (tail vl)
+    m  = fst (head vl)
+    n  = fst (last vl)
+    prop x y = if (x, y) `elem` el
+               then let v = fromJust (lookup x vl)
+                    in case operator v of
+                       (Filter x)    -> x
+                       (FilterAcc x) -> x
+                       _             -> 1
+               else 0
+
+    in listArray ((m,m),(n,n)) $ [ prop x y | x <- [m..n], y <- [m..n]]
 
 
 -- | calculate an array of external input arrival probabilities
 deriveInputsArray :: StreamGraph -> Double -> Array Int Double
 deriveInputsArray sg totalArrivalRate = let
-    vl = init $ vertexList sg -- XXX trimming the Sink node. This is incorrect. We need to trm the source node.
-    -- but, all arrivals into nodes immediately after a source node are considered to receive the sources. So this
-    -- "works" for simple graph topologies with a single source node at the start of the vertex list.
-    n = length vl
-    a = map (\v -> case operator v of
+    vl = map (\v -> (vertexId v, v)) (vertexList sg)
+    m  = fst (head vl)
+    n  = fst (last vl)
+
+    srcProp x = case lookup x vl of
+        Nothing -> 0
+        Just v  -> case operator v of
                 Source x -> x / totalArrivalRate
-                _        -> 0) vl
-    in listArray (1,n) a
+                _        -> 0
+
+    in listArray (m,n) $ map srcProp [m..n]
+
 
 -- | derive an Array of service times from a StreamGraph
 deriveServiceTimes :: StreamGraph -> Array Int Double
 deriveServiceTimes sg = let
-    vl = vertexList sg
-    m  = length vl - 1 -- XXX adjusting for 1 Source node
-    in listArray (1,m) $ map (Striot.StreamGraph.serviceTime) (tail vl) -- XXX adjusting for 1 Source node
+    vl = map (\v -> (vertexId v, v)) (vertexList sg)
+    m  = fst (head vl)
+    n  = fst (last vl)
+    prop x = case lookup x vl of
+        Nothing -> 0
+        Just v  -> (Striot.StreamGraph.serviceTime) v
+
+    in listArray (m,n) $ map prop [m..n]
 
 calcAllSg :: StreamGraph -> [OperatorInfo]
 calcAllSg sg = calcAll propagation arrivals services

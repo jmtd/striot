@@ -37,7 +37,7 @@ test_match = assertBool $ isJust $ firstMatch graph filterMerge
 rewritten  = graph & fromJust (firstMatch graph filterMerge)
 
 -- for some reason I'm getting [1,2,3]
-test_opIds = assertEqual [1,4,5] $ map opId (calcAllSg rewritten)
+test_opIds = assertEqual [0..5] $ map opId (calcAllSg graph)
 
 isOverUtilised :: StreamGraph -> Bool
 isOverUtilised = any (>1) . map util . calcAllSg
