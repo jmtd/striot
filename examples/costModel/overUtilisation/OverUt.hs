@@ -27,7 +27,7 @@ source = [| do
 graph = path
     [ StreamVertex 0 (Source 8)     [ source         ] "Int" "Int" 0
     , StreamVertex 1 (Filter (1/2)) [[|(>5)        |]] "Int" "Int" 0
-    , StreamVertex 4 Merge          []                 "Int" "Int" 5
+    , StreamVertex 4 Merge          []                 "Int" "Int" (1/5)
     , StreamVertex 5 Sink           [[|mapM_ print |]] "Int" "Int" 0
     ]
 

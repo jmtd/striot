@@ -99,7 +99,7 @@ filterFuse (Connect (Vertex a@(StreamVertex i (Filter sel1) (p:_) ty _ s1))
                     (Vertex b@(StreamVertex _ (Filter sel2) (q:_) _ _ s2))) =
     let c = a { operator    = Filter (sel1 * sel2)
               , parameters  = [[| (\p q x -> p x && q x) $(p) $(q) |]]
-              , serviceRate = sumRates s1 sel1 s2
+              , serviceTime = sumTimes s1 sel1 s2
               }
     in Just (removeEdge c c . mergeVertices (`elem` [a,b]) c)
 
@@ -178,7 +178,7 @@ filterFilterAcc (Connect (Vertex v1@(StreamVertex i (Filter sel1) (p:_) ty _ s1)
     let v3 = StreamVertex i (FilterAcc (sel1*sel2))
           [ [| \a v -> if $(p) v then $(f) a v else a |]
           , a
-          , [| \v a -> $(p) v && $(q) v a |] ] ty ty (sumRates s1 sel1 s2)
+          , [| \v a -> $(p) v && $(q) v a |] ] ty ty (sumTimes s1 sel1 s2)
     in  Just (removeEdge v3 v3 . mergeVertices (`elem` [v1,v2]) v3)
 filterFilterAcc _ = Nothing
 
@@ -216,7 +216,7 @@ filterAccFilter :: RewriteRule
 filterAccFilter (Connect (Vertex v1@(StreamVertex i (FilterAcc sel1) (f:a:p:_) ty _ s1))
                          (Vertex v2@(StreamVertex _ (Filter sel2) (q:_) _ _ s2))) =
     let p' = [| \v a -> $(p) v a && $(q) v |]
-        v  = StreamVertex i (FilterAcc (sel1*sel2)) [f,a,p'] ty ty (sumRates s1 sel1 s2)
+        v  = StreamVertex i (FilterAcc (sel1*sel2)) [f,a,p'] ty ty (sumTimes s1 sel1 s2)
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
 filterAccFilter _ = Nothing
 
@@ -255,7 +255,7 @@ filterAccFilterAcc (Connect (Vertex v1@(StreamVertex i (FilterAcc sel1) (f:a:p:s
     let f' = [| \ (a,b) v -> ($(f) a v, if $(p) v a then $(g) b v else b) |]
         a' = [| ($(a), $(b)) |]
         q' = [| \v (y,z) -> $(p) v y && $(q) v z |]
-        v  = StreamVertex i (FilterAcc (sel1*sel2)) (f':a':q':ss) ty ty (sumRates s1 sel1 s2)
+        v  = StreamVertex i (FilterAcc (sel1*sel2)) (f':a':q':ss) ty ty (sumTimes s1 sel1 s2)
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
 filterAccFilterAcc _ = Nothing
 
@@ -299,7 +299,7 @@ test_filterAccFilterAcc = assertEqual (applyRule filterAccFilterAcc filterAccFil
 mapFuse :: RewriteRule
 mapFuse (Connect (Vertex v1@(StreamVertex i Map (f:ss) t1 _ s1))
                  (Vertex v2@(StreamVertex _ Map (g:_) _ t2 s2))) =
-    let v = StreamVertex i Map ([| $(f) >>> $(g) |]:ss) t1 t2 (sumRates s1 1 s2)
+    let v = StreamVertex i Map ([| $(f) >>> $(g) |]:ss) t1 t2 (sumTimes s1 1 s2)
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
 mapFuse _ = Nothing
 
@@ -312,7 +312,7 @@ mapFusePre = path
 
 mapFusePost = path
     [ StreamVertex 0 (Source 1) [] "String" "String" 1
-    , StreamVertex 1 Map [[| show >>> length |]] "Int" "Int" (1/2)
+    , StreamVertex 1 Map [[| show >>> length |]] "Int" "Int" 2
     , StreamVertex 3 Sink [] "Int" "Int" 1
     ]
 test_mapFuse = assertEqual (applyRule mapFuse mapFusePre) mapFusePost
@@ -322,7 +322,7 @@ test_mapFuse = assertEqual (applyRule mapFuse mapFusePre) mapFusePost
 mapScan :: RewriteRule
 mapScan (Connect (Vertex v1@(StreamVertex i Map (f:ss) t1 _ s1))
                  (Vertex v2@(StreamVertex _ Scan (g:a:_) _ t2 s2))) =
-    let v = StreamVertex i Scan ([| flip (flip $(f) >>> $(g)) |]:a:ss) t1 t2 (sumRates s1 1 s2) 
+    let v = StreamVertex i Scan ([| flip (flip $(f) >>> $(g)) |]:a:ss) t1 t2 (sumTimes s1 1 s2) 
     in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
 mapScan _ = Nothing
 
@@ -350,7 +350,7 @@ mapScanPost = path
 test_mapScan = assertEqual (applyRule mapScan mapScanPre) mapScanPost
 
 -- streamExpand >>> streamFilter f == streamMap (filter f) >>> streamExpand --
--- TODO: assuming that the serviceRate for the new map matches the old filter
+-- TODO: assuming that the serviceTime for the new map matches the old filter
 -- Note that the filter selectivity information is lost
 
 expandFilter :: RewriteRule
@@ -387,7 +387,7 @@ mapFilterAcc :: RewriteRule
 mapFilterAcc (Connect (Vertex m@(StreamVertex i Map (f:_) t1 _ sm))
                       (Vertex f1@(StreamVertex j (FilterAcc sel) (g:a:p:_) _ _ sf))) =
 
-    let f2 = StreamVertex i (FilterAcc sel) [g, a, [| ($f) >>> $(p) |]] t1 t1 (sumRates sm 1 sf)
+    let f2 = StreamVertex i (FilterAcc sel) [g, a, [| ($f) >>> $(p) |]] t1 t1 (sumTimes sm 1 sf)
         m2 = m { vertexId = j }
     in  Just (replaceVertex f1 m2 . replaceVertex m f2)
 
@@ -420,7 +420,7 @@ mapFilterAccPost = path
 test_mapFilterAcc = assertEqual (applyRule mapFilterAcc mapFilterAccPre) mapFilterAccPost
 
 -- streamMap f >>> streamWindow wm == streamWindow wm >>> streamMap (map f) --
--- TODO: assuming serviceRate for map is the same
+-- TODO: assuming serviceTime for map is the same
 
 mapWindow :: RewriteRule
 mapWindow (Connect (Vertex m@(StreamVertex i Map (f:_) t1 _ sm))
@@ -450,7 +450,7 @@ test_mapWindow = assertEqual (applyRule mapWindow mapWindowPre) mapWindowPost
 
 -- streamExpand >>> streamMap f == streamMap (map f) >>> streamExpand --------
 -- [a]           a            b   [a]               [b]               b
--- TODO: assuming serviceRate for map unaffected
+-- TODO: assuming serviceTime for map unaffected
 
 expandMap :: RewriteRule
 expandMap (Connect (Vertex e@(StreamVertex i Expand _ t1 _ se))
@@ -724,7 +724,6 @@ test_expandMerge = assertEqual (applyRule expandMerge expandMergePre)
 -- | fuse two Merge operators. The order-preserving transformation is strictly
 -- right-oriented i.e. merge [s1, merge [s2,s3]] == merge [s1,s2,s3] but for
 -- non-order-preserving we can write a much more generic rule.
--- TODO: what to do about service rates?
 mergeFuse :: RewriteRule
 mergeFuse (Connect (Vertex m1@(StreamVertex i Merge _ _ _ _))
                    (Vertex m2@(StreamVertex j Merge _ _ _ _))) =
@@ -751,11 +750,11 @@ test_mergeFuse = assertEqual (applyRule mergeFuse mergeFusePre) mergeFusePost
 
 -- utility/boilerplate -------------------------------------------------------
 
-sumRates :: Double -> Double -> Double -> Double
-sumRates a f b = 1 / ((1 / a) + (f / b))
+sumTimes :: Double -> Double -> Double -> Double
+sumTimes a f b = a + (f * b)
 
-test_sumRates1 = assertEqual 1 $ sumRates 2 1 2
-test_sumRates2 = assertEqual 2 $ sumRates 4 1 4
+test_sumTimes1 = assertEqual (1/2) $ sumTimes (1/2) 1 (1/2)
+test_sumTimes2 = assertEqual (1/4) $ sumTimes (1/4) 1 (1/4)
 
 -- compare operators, ignoring filter selectivity
 cmpOps :: StreamOperator -> StreamOperator -> Bool

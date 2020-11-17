@@ -34,7 +34,7 @@ data StreamVertex = StreamVertex
     , parameters :: [ExpQ]
     , intype     :: String
     , outtype    :: String
-    , serviceRate:: Double
+    , serviceTime:: Double
     }
 
 instance Eq StreamVertex where
