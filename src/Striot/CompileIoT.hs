@@ -155,10 +155,6 @@ generateCode sg pm opts = let
 
 data NodeType = NodeSource | NodeSink | NodeLink deriving (Show)
 
-isSource :: StreamOperator -> Bool
-isSource (Source _) = True
-isSource _ = False
-
 nodeType :: StreamGraph -> NodeType
 nodeType sg = if isSource $ operator (head (vertexList sg))
               then NodeSource

@@ -9,6 +9,7 @@ module Striot.StreamGraph ( StreamGraph(..)
                           , StreamVertex(..)
                           , PartitionedGraph(..)
                           , deQ
+                          , isSource
                           , showParam
                           ) where
 
@@ -93,6 +94,10 @@ data StreamOperator = Map
 
 instance Ord StreamVertex where
     compare x y = compare (vertexId x) (vertexId y)
+
+isSource :: StreamOperator -> Bool
+isSource (Source _) = True
+isSource _ = False
 
 ------------------------------------------------------------------------------
 -- quickcheck experiment
