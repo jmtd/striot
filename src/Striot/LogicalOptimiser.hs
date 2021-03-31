@@ -864,3 +864,52 @@ newVertexId :: StreamGraph -> Int
 newVertexId = succ . last . sort . map vertexId . vertexList
 
 main = htfMain htf_thisModulesTests
+
+------------------------------------------------------------------------------
+-- Inserting a window/expand over a sub-graph
+--
+
+-- the types of operators we can safely rewrite into a window
+windowable :: StreamOperator -> Bool
+windowable (Filter _) = True
+windowable Map = True
+windowable _ = False
+
+liftWindow :: StreamVertex -> StreamVertex
+liftWindow m@(StreamVertex i Map (param:_) inTy outTy serviceT) =
+    m { parameters = [[| map $(param) |]]
+      , intype     = "[" ++ inTy  ++ "]"
+      , outtype    = "[" ++ outTy ++ "]"
+      }
+liftWindow f@(StreamVertex i (Filter s) (param:_) inTy outTy serviceT) =
+    f { parameters = [[| map (filter $(param)) |]]
+      , intype     = "[" ++ inTy  ++ "]"
+      , outtype    = "[" ++ outTy ++ "]"
+      }
+liftWindow _ = error "liftWindow: unsupported Operator type"
+
+-- we will try to match what could be the start of a sub-graph to Window.
+-- We would insert the Window before the first node of a pair, which must
+-- be Windowable; and the second mustn't be a sink or this would be
+-- pointless. IT must be windowable as well, or we'd only be windowing
+-- over one operator. Would that ever be useful?
+
+addWindow :: RewriteRule
+addWindow (Connect (Vertex a@(StreamVertex _ oa _ _ _ _))
+                   (Vertex b@(StreamVertex _ ob _ _ _ _))) =
+
+    if   not (windowable oa)
+    then Nothing
+    else Just $ \g ->
+        if ob == Sink
+        then let -- we open and close the window
+          i = newVertexId g
+          j = i + 1
+          w = StreamVertex i Window [[| chop 2 |]] "?" "?" 0 -- ?
+          e = StreamVertex j Expand [] "?" "?" 0 -- ?
+          l = liftWindow a
+          in ( replaceVertex a w -- XXX right way around?
+               >>> overlay (path [w,l,e])
+             ) g -- XXX does this have enough edges?
+            --
+        else g -- XXX: we keep going! somehow
