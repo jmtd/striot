@@ -253,3 +253,39 @@ prop_noShortJoin = forAll (treegraph' 3) $
 
 prop_noJoinExpand = forAll ((fmap (chOp Expand)) <$> (treegraph' 1) >>= extendTree 3) $
     (/=) Join . operator . rootLabel . head . subForest
+
+------------------------------------------------------------------------------
+-- shoddy type inference stuff
+
+-- Given a Tree StreamGraph, what's its type? Ignoring the explicit type parameter
+-- in most cases
+treeGraphType :: Tree StreamVertex -> String
+-- leaf nodes should be Source (but we don't confirm). Take their out-type.
+-- XXX better ignore that and instead generate a new type variable?
+treeGraphType (Node (StreamVertex _ _ _ _ ty _) []) = ty
+-- map & scan change the type and specify it explicitly
+treeGraphType (Node (StreamVertex _ Map _ _ ty _) _) = ty
+treeGraphType (Node (StreamVertex _ Scan _ _ ty _) _) = ty
+
+treeGraphType (Node (StreamVertex _ Window _ _ _ _) (child:[])) =
+    "[" ++ treeGraphType child ++ "]"
+
+-- this is not quite what we want. if we have an expand, then we want to push
+-- that knowledge upstream.
+treeGraphType (Node (StreamVertex _ Expand _ _ _ _) (child:[])) =
+    init . tail . treeGraphType $ child
+
+treeGraphType (Node (StreamVertex _ Join _ _ _ _) children) = let
+    tyA = treeGraphType (children !! 0)
+    tyB = treeGraphType (children !! 1)
+    in concat ["(", tyA, ",", tyB, ")"]
+
+-- filter, filterAcc do not change the type
+treeGraphType (Node (StreamVertex _ (Filter _) _ _ _ _) (child:[])) = treeGraphType child
+treeGraphType (Node (StreamVertex _ (FilterAcc _) _ _ _ _) (child:[])) = treeGraphType child
+treeGraphType (Node (StreamVertex _ Sink _ _ _ _) (child:[])) = treeGraphType child
+
+treeGraphType (Node (StreamVertex _ Merge _ _ _ _) children) = let
+    (ty:tys) = map treeGraphType children
+    valid = and $ map ((==) ty) tys
+    in if valid then ty else error "invalid types for merge"
