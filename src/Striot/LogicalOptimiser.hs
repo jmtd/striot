@@ -30,6 +30,7 @@ module Striot.LogicalOptimiser ( applyRules
                                , expandMerge
                                , mergeFuse
                                , expandFilterAcc
+                               , filterAccWindow
 
                                , htf_thisModulesTests
                                ) where
@@ -38,6 +39,7 @@ import Striot.StreamGraph
 import Striot.FunctionalProcessing
 import Algebra.Graph
 import Test.Framework hiding ((===))
+import Data.Char (isLower)
 import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Function ((&))
 import Data.List (nub, sort, intercalate)
@@ -114,6 +116,7 @@ rules = [ filterFuse
         , expandMerge
         , mergeFuse
         , expandFilterAcc
+        , filterAccWindow
         ]
 
 -- streamFilter f >>> streamFilter g = streamFilter (\x -> f x && g x) -------
@@ -447,11 +450,29 @@ test_mapFilterAcc = assertEqual (applyRule mapFilterAcc mapFilterAccPre) mapFilt
 -- TODO: assuming serviceTime for map is the same
 -- This is only applicable when the map parameter has type (a -> a)
 
-mapWindow :: RewriteRule
-mapWindow (Connect (Vertex m@(StreamVertex i Map (f:_) mapInT mapOutT sm))
-                   (Vertex w@(StreamVertex j Window (wm:_) _ windowOutT sw))) =
+isTypeVariable :: String -> Bool
+isTypeVariable = isLower . head
 
-    if   mapInT /= mapOutT
+-- could two types be plugged together?
+compatibleTypes :: String -> String -> Bool
+compatibleTypes outT inT | outT == inT        = True -- matching concrete types
+                         | isTypeVariable inT = True
+                         | otherwise          = False
+
+-- not in use yet. But we should test that the rule applies under these
+-- circumstances!
+compatTtest = 
+  Vertex (StreamVertex 4 Map [] "(Int,Int,Int)" "Int" 0.0)
+  `Connect`
+  Vertex (StreamVertex 5 Window [] "a" "[a]" 0.0)
+
+test_compatibleTypes = assertBool $ compatibleTypes "Int" "a"
+
+mapWindow :: RewriteRule
+mapWindow (Connect (Vertex m@(StreamVertex i Map    (f:_) mapInT mapOutT sm))
+                   (Vertex w@(StreamVertex j Window (wm:_) windowInT windowOutT sw))) =
+
+    if   not (compatibleTypes mapOutT windowInT)
     then Nothing
     else let
         w2 = StreamVertex i Window [wm] mapInT windowOutT sw
