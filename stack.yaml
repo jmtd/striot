@@ -1,6 +1,8 @@
 resolver: lts-19.0 # ghc-9.0.2
 packages:
 - .
+ghc-options:
+  quickspec: -rtsopts -with-rtsopts=-K32M
 extra-deps:
 - net-mqtt-0.8.2.0
 - aeson-2.0.2.0

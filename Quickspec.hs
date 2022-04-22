@@ -23,11 +23,11 @@ main = quickSpec
   [Event Int] -> [[Int]]
   [Event Int] -> [[Event Int]]
    - -}
---, con "streamWindow"    (streamWindow    :: (Stream A -> [Stream A]) -> Stream A -> Stream [A])
+  , con "streamWindow"    (streamWindow    :: (Stream A -> [Stream A]) -> Stream A -> Stream [A])
 
 -- including this causes either Stack Overflow or Out Of Memory on
 -- my systems
---, con "streamFilterAcc" (streamFilterAcc :: (B -> A -> B) -> B -> (A -> B -> Bool) -> Stream A -> Stream A)
+  , con "streamFilterAcc" (streamFilterAcc :: (B -> A -> B) -> B -> (A -> B -> Bool) -> Stream A -> Stream A)
 
   {-
    -You will not get any variables of the following types:
@@ -44,8 +44,10 @@ main = quickSpec
   , inst (Sub Dict :: Ord A :- Ord (Event A))
   , inst (Sub Dict :: Arbitrary A :- Arbitrary (Event A))
 
-  , funs
-  , background [ con "both"  (both :: (A -> Bool) -> (A -> Bool) -> A -> Bool) ]
+  , background
+    [ con "both"  (both :: (A -> Bool) -> (A -> Bool) -> A -> Bool)
+    , con "(.)"   ((.) :: (A -> A) -> (A -> A) -> A -> A)
+    ]
   ]
 
 
