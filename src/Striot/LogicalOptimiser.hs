@@ -8,8 +8,7 @@ module Striot.LogicalOptimiser ( applyRules
                                , firstMatch
 
                                , Variant(..)
-                               , original
-                               , variantGraph'
+                               , variantStreamGraph
                                , applyRules2
                                , Label
                                , LabelledRewriteRule(..)
@@ -17,6 +16,7 @@ module Striot.LogicalOptimiser ( applyRules
                                , reorderingRules'
                                , reshapingRules'
                                , filterFusePre
+                               , variantSequence
 
                                , RewriteRule(..)
 
@@ -71,18 +71,22 @@ data Variant = Variant
     , variantParent:: Variant
     } | Original StreamGraph deriving (Show, Eq)
 
-original (Original s) = s
+variantStreamGraph :: Variant -> StreamGraph
+variantStreamGraph (Variant g _ _) = g
+variantStreamGraph (Original g) = g
 
--- XXX awkward name
-variantGraph' :: Variant -> StreamGraph
-variantGraph' (Variant g _ _) = g
-variantGraph' (Original g) = g
+variantSequence :: Variant -> [Label]
+variantSequence = reverse . variantSequence'
+variantSequence' (Original _) = []
+variantSequence' (Variant _ r p) = r:(variantSequence' p)
 
+-- caller may wish to use
+-- nubBy (\x y -> original x == original y) applyRules2
 applyRules2 :: [LabelledRewriteRule] -> Int -> Variant -> [Variant]
 applyRules2 lrules n v =
     if n < 1 then [v]
     else let
-        sg = variantGraph' v
+        sg = variantStreamGraph v
         vs = map (\(l,f) -> Variant (f sg) l v)
            $ mapMaybe (\(LabelledRewriteRule l r) -> fmap ((,) l) (firstMatch sg r))
              lrules
