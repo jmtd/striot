@@ -14,6 +14,8 @@ module Striot.LogicalOptimiser ( applyRules
                                , Label
                                , LabelledRewriteRule(..)
                                , pureRules'
+                               , reorderingRules'
+                               , reshapingRules'
                                , filterFusePre
 
                                , RewriteRule(..)
