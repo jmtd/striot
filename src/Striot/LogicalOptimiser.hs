@@ -7,6 +7,15 @@ module Striot.LogicalOptimiser ( applyRules
                                , applyRule
                                , firstMatch
 
+                               , Variant(..)
+                               , original
+                               , variantGraph'
+                               , applyRules2
+                               , Label
+                               , LabelledRewriteRule(..)
+                               , pureRules'
+                               , filterFusePre
+
                                , RewriteRule(..)
 
                                , pureRules
@@ -52,6 +61,31 @@ import Data.Function ((&))
 import Data.List (nub, sort, intercalate)
 import Control.Arrow ((>>>))
 
+------------------------------------------------------------------------------
+
+data Variant = Variant
+    { variantGraph :: StreamGraph
+    , variantRule  :: String
+    , variantParent:: Variant
+    } | Original StreamGraph deriving (Show, Eq)
+
+original (Original s) = s
+
+-- XXX awkward name
+variantGraph' :: Variant -> StreamGraph
+variantGraph' (Variant g _ _) = g
+variantGraph' (Original g) = g
+
+applyRules2 :: [LabelledRewriteRule] -> Int -> Variant -> [Variant]
+applyRules2 lrules n v =
+    if n < 1 then [v]
+    else let
+        sg = variantGraph' v
+        vs = map (\(l,f) -> Variant (f sg) l v)
+           $ mapMaybe (\(LabelledRewriteRule l r) -> fmap ((,) l) (firstMatch sg r))
+             lrules
+        in v : vs ++ (concatMap (applyRules2 lrules (n-1)) vs)
+
 -- applying encoded rules and their resulting ReWriteOps ----------------------
 
 type RewriteRule = StreamGraph -> Maybe (StreamGraph -> StreamGraph)
@@ -85,42 +119,50 @@ applyRules rs n sg =
 
 ------------------------------------------------------------------------------
 
+type Label = String
+data LabelledRewriteRule = LabelledRewriteRule
+    { label :: String
+    , rule  :: RewriteRule }
+
 -- | Semantically-preserving rules. XXX pureRules is not a good name
 pureRules :: [RewriteRule]
-pureRules =
-        [ filterFuse
-        , mapFilter
-        , filterFilterAcc
-        , filterAccFilter
-        , filterAccFilterAcc
-        , mapFuse
-        , mapScan
-        , expandFilter
-        , mapFilterAcc
-        , mapWindow
-        , expandMap
-        , expandScan
-        , expandExpand
-        , mergeMap
-        , mapMerge
-        , expandFilterAcc
+pureRules = map rule pureRules'
+pureRules' =
+        [ LabelledRewriteRule "filterFuse"         filterFuse
+        , LabelledRewriteRule "mapFilter"          mapFilter
+        , LabelledRewriteRule "filterFilterAcc"    filterFilterAcc
+        , LabelledRewriteRule "filterAccFilter"    filterAccFilter
+        , LabelledRewriteRule "filterAccFilterAcc" filterAccFilterAcc
+        , LabelledRewriteRule "mapFuse"            mapFuse
+        , LabelledRewriteRule "mapScan"            mapScan
+        , LabelledRewriteRule "expandFilter"       expandFilter
+        , LabelledRewriteRule "mapFilterAcc"       mapFilterAcc
+        , LabelledRewriteRule "mapWindow"          mapWindow
+        , LabelledRewriteRule "expandMap"          expandMap
+        , LabelledRewriteRule "expandScan"         expandScan
+        , LabelledRewriteRule "expandExpand"       expandExpand
+        , LabelledRewriteRule "mergeMap"           mergeMap
+        , LabelledRewriteRule "mapMerge"           mapMerge
+        , LabelledRewriteRule "expandFilterAcc"    expandFilterAcc
         ]
 
 -- | A list of rules which cause Stream re-ordering.
 -- These are included in 'defaultRewriteRules'.
-reorderingRules =
-    [ filterMerge
-    , expandMerge
-    , mergeFilter
-    , mergeExpand
-    , mergeFuse
+reorderingRules = map rule reorderingRules'
+reorderingRules' =
+    [ LabelledRewriteRule "filterMerge" filterMerge
+    , LabelledRewriteRule "expandMerge" expandMerge
+    , LabelledRewriteRule "mergeFilter" mergeFilter
+    , LabelledRewriteRule "mergeExpand" mergeExpand
+    , LabelledRewriteRule "mergeFuse"   mergeFuse
     ]
 
 -- | A list of rules which cause re-shaping of Windows.
 -- These are not included in 'defaultRewriteRules'.
-reshapingRules =
-    [ filterWindow
-    , filterAccWindow
+reshapingRules = map rule reshapingRules'
+reshapingRules' =
+    [ LabelledRewriteRule "filterWindow"    filterWindow
+    , LabelledRewriteRule "filterAccWindow" filterAccWindow
     ]
 
 defaultRewriteRules =
