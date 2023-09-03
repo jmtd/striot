@@ -6,7 +6,7 @@ module WearableStats where
 
 import Algebra.Graph.Export.Dot
 import Data.Function ((&))
-import Data.List (nub,sort)
+import Data.List (nub,sort,nubBy,intercalate)
 import Data.Maybe (fromJust, isJust)
 import Data.Text.Format.Numbers
 import Data.Text (unpack)
@@ -51,9 +51,14 @@ test_defaultgraph_bwlimit = assertEmpty $ norewritePlans
 ---- Evaluation Stage 2: logical optimiser/rewrites
 
 -- how many program variants are derived?
-rewrites            = (nub . applyRules (rules opts) 5) graph
+defaultRewriteRules' = pureRules' ++ reorderingRules'
+lrules = LabelledRewriteRule "filterAccWindow" filterAccWindow : defaultRewriteRules'
+rewrites            = (nubBy (\x y -> variantStreamGraph x == variantStreamGraph y)
+                      . applyRules2 lrules 5
+                      . Original
+                      ) graph
 rewriteVariantCount = length rewrites - 1 -- 57
-plans               = concatMap makePlans rewrites
+plans               = concatMap makePlans (map variantStreamGraph rewrites)
 rewritePlanCount    = length plans -- 5718
 
 -- This time, the \textit{maximum node utilisation} filter removes 4662 options,
@@ -122,5 +127,22 @@ generateThesisArtefacts = do
   writeFile "scoreBarChart.tex" chart
   mapM_ (\(i,v) -> 
      writeGraph streamGraphToDot v ("rewritten/"++(show i)++".png")
-     ) (zip [1..] rewrites)
+     ) (zip [1..] (map variantStreamGraph rewrites))
+
+  writeFile "wearableAppendix.tex" $ concat $ appendixHead : map (\(n,v) ->
+
+    let s = intercalate ", " $ variantSequence v
+    in appendixFig n s
+    ) (zip [1..] rewrites)
+
   htfMain htf_thisModulesTests
+
+appendixHead = "\\chapter{Wearable Example rewritten programs}\n\
+\\\label{Appendix:WearableExample}\n"
+
+appendixFig n s = "\\begin{figure}[ht]\n\
+\    \\centering\n\
+\    \\includegraphics[width=0.8\\linewidth]{wearableVariants/"++(show n)++"}\n\
+\      \\caption{wearableVariants/"++(show n)++"\n"
+     ++ s ++ "}\n\
+\  \\end{figure}\n"
