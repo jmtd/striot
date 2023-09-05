@@ -62,6 +62,7 @@ import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Function ((&))
 import Data.List (nub, sort, intercalate)
 import Control.Arrow ((>>>))
+import Data.List.HT (mapAdjacent)
 
 ------------------------------------------------------------------------------
 
@@ -178,14 +179,29 @@ defaultRewriteRules =
 
 filterFuse :: RewriteRule
 filterFuse (Connect (Vertex a@(StreamVertex i (Filter sel1) (p:_) ty _ s1))
-                    (Vertex b@(StreamVertex _ (Filter sel2) (q:_) _ _ s2))) =
+                    (Vertex b@(StreamVertex j (Filter sel2) (q:_) _ _ s2))) =
     let c = a { operator    = Filter (sel1 * sel2)
               , parameters  = [[| (\p q x -> p x && q x) $(p) $(q) |]]
               , serviceTime = sumTimes s1 sel1 s2
               }
-    in Just (removeEdge c c . mergeVertices (`elem` [a,b]) c)
+    in Just $ \g -> ( decrementIdsFrom j
+                    . removeEdge c c
+                    . mergeVertices (`elem` [a,b]) c
+                    ) g
 
 filterFuse _ = Nothing
+
+decrementIdsFrom :: Int -> StreamGraph -> StreamGraph
+decrementIdsFrom i = fmap $ \v ->
+    let j = vertexId v in
+        if   j > i
+        then v { vertexId = j - 1 }
+        else v
+
+-- we need to test the use of decrementIdsFrom somehow.
+
+isAscendingSeq :: Enum a => Eq a => [a] -> Bool
+isAscendingSeq = and . mapAdjacent (\x y -> y == succ x)
 
 gt3 = [| (>3) |]
 lt5 = [| (<5) |]
