@@ -396,9 +396,12 @@ test_filterAccFilterAcc = assertEqual (applyRule filterAccFilterAcc filterAccFil
 
 mapFuse :: RewriteRule
 mapFuse (Connect (Vertex v1@(StreamVertex i Map (f:ss) t1 _ s1))
-                 (Vertex v2@(StreamVertex _ Map (g:_) _ t2 s2))) =
+                 (Vertex v2@(StreamVertex j Map (g:_) _ t2 s2))) =
     let v = StreamVertex i Map ([| $(f) >>> $(g) |]:ss) t1 t2 (sumTimes s1 1 s2)
-    in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+    in Just $ \g -> ( decrementIdsFrom j
+                    . removeEdge v v
+                    . mergeVertices (`elem` [v1,v2]) v
+                    ) g
 mapFuse _ = Nothing
 
 mapFusePre = path
@@ -485,7 +488,7 @@ mapFilterAcc :: RewriteRule
 mapFilterAcc (Connect (Vertex m@(StreamVertex i Map (f:_) t1 _ sm))
                       (Vertex f1@(StreamVertex j (FilterAcc sel) (g:a:p:_) _ _ sf))) =
 
-    let f2 = StreamVertex i (FilterAcc sel) [g, a, [| ($f) >>> $(p) |]] t1 t1 (sumTimes sm 1 sf)
+    let f2 = StreamVertex i (FilterAcc sel) [g, a, [| ($f) >>> ($p) |]] t1 t1 (sumTimes sm 1 sf)
         m2 = m { vertexId = j }
     in  Just (replaceVertex f1 m2 . replaceVertex m f2)
 
