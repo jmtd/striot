@@ -5,6 +5,7 @@
 module WearableStats where
 
 import Algebra.Graph.Export.Dot
+import Algebra.Graph
 import Data.Function ((&))
 import Data.List (nub,sort,nubBy,intercalate)
 import Data.Maybe (fromJust, isJust)
@@ -132,7 +133,8 @@ generateThesisArtefacts = do
   writeFile "wearableAppendix.tex" $ concat $ appendixHead : map (\(n,v) ->
 
     let s = intercalate ", " $ variantSequence v
-    in appendixFig n s
+        c = (length . vertexList . variantStreamGraph) v
+    in appendixFig n s c
     ) (zip [1..] rewrites)
 
   htfMain htf_thisModulesTests
@@ -140,9 +142,11 @@ generateThesisArtefacts = do
 appendixHead = "\\chapter{Wearable Example rewritten programs}\n\
 \\\label{Appendix:WearableExample}\n"
 
-appendixFig n s = "\\begin{figure}[ht]\n\
+appendixFig n s c = "\\newpage\n\\begin{figure}[H]\n\
 \    \\centering\n\
-\    \\includegraphics[width=0.8\\linewidth]{wearableVariants/"++(show n)++"}\n\
+\    "++(show c)++" nodes\\\\\n\
+\    \\includegraphics[width=1.0\\linewidth]{wearableVariants/"++(show n)++"}\n\
 \      \\caption{wearableVariants/"++(show n)++"\n"
      ++ s ++ "}\n\
+\       \\label{fig:wearableVariants"++(show n)++"}\n\
 \  \\end{figure}\n"
