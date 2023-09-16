@@ -3,12 +3,19 @@
 
 import Language.Haskell.TH
 import Data.Function ((&))
+import           Data.Time    (UTCTime)
+
+data Event a = Event { time    :: Maybe Timestamp
+                         , value   :: Maybe a}
+     deriving (Eq, Ord, Show, Read)
+type Stream a = [Event a]
+type Timestamp       = UTCTime
 
 data StreamProgram o where
-    StreamSource :: Quote m => Code m o                                   -> StreamProgram (m o)
-    StreamMap    :: Quote m => Code m (i -> o)    -> StreamProgram (m i)  -> StreamProgram (m o)
-    StreamFilter :: Quote m => Code m (i -> Bool) -> StreamProgram (m i)  -> StreamProgram (m i)
-    StreamSink   :: Quote m => Code m (i -> o)    -> StreamProgram (m i)  -> StreamProgram (m o)
+    StreamSource :: Quote m => m Exp                         -> StreamProgram o
+    StreamMap    :: Quote m => m Exp -> StreamProgram (m i)  -> StreamProgram o
+    StreamFilter :: Quote m => m Exp -> StreamProgram (m i)  -> StreamProgram i
+    StreamSink   :: Quote m => m Exp -> StreamProgram (m i)  -> StreamProgram o
 
 -- we're not yet wrapping the types in 'Stream'
 
