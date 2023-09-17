@@ -422,9 +422,12 @@ test_mapFuse = assertEqual (applyRule mapFuse mapFusePre) mapFusePost
 
 mapScan :: RewriteRule
 mapScan (Connect (Vertex v1@(StreamVertex i Map (f:ss) t1 _ s1))
-                 (Vertex v2@(StreamVertex _ Scan (g:a:_) _ t2 s2))) =
+                 (Vertex v2@(StreamVertex j Scan (g:a:_) _ t2 s2))) =
     let v = StreamVertex i Scan ([| flip (flip $(f) >>> $(g)) |]:a:ss) t1 t2 (sumTimes s1 1 s2) 
-    in  Just (removeEdge v v . mergeVertices (`elem` [v1,v2]) v)
+    in Just $ \g -> ( decrementIdsFrom j
+                    . removeEdge v v
+                    . mergeVertices (`elem` [v1,v2]) v
+                    ) g
 mapScan _ = Nothing
 
 mapScanPre = path
