@@ -16,9 +16,8 @@ type ArrivalRate = Double
 
 sinkFn = [| mapM_ $ putStrLn . ("receiving "++) . show . value |] :: ExpQ
 
-
-data StreamProg = StreamProg StreamOperator [Exp] String String ServiceTime [StreamProg]
-                 deriving (Show, Eq)
+data StreamProg = StreamProg Int StreamOperator [Exp] String String ServiceTime [StreamProg]
+    deriving (Show, Eq)
 
 
 -- what StreamGraph will demonstrate the issue of vertexIds getting reshuffled?
@@ -31,24 +30,21 @@ sample1 = simpleStream
   ]
 v = head $ vertexList sample1
 
-sample1d = StreamProg (Source 1)    [deQ [| sourceFn |]] "Int" "Int" 0 []
-         & StreamProg (Filter 0.5) [deQ [| (>5) |]]     "Int"   "Int"      1 .(:[])
-         & StreamProg (Filter 0.5) [deQ [| (<8) |]]     "Int"   "Int"      1 .(:[])
-         & StreamProg Window       [deQ [| chop 1 |]]   "Int"   "[Int]"    1 .(:[])
-         & StreamProg Sink         [deQ sinkFn]         "[Int]" "[String]" 0 .(:[])
+sample1d = StreamProg 1 (Source 1)   [deQ [| sourceFn |]] "IO ()" "Int"      0 []
+         & StreamProg 2 (Filter 0.5) [deQ [| (>5) |]]     "Int"   "Int"      1 .(:[])
+         & StreamProg 3 (Filter 0.5) [deQ [| (<8) |]]     "Int"   "Int"      1 .(:[])
+         & StreamProg 4 Window       [deQ [| chop 1 |]]   "Int"   "[Int]"    1 .(:[])
+         & StreamProg 5 Sink         [deQ sinkFn]         "[Int]" "[String]" 0 .(:[])
 
 -- construct a partially-applied StreamProg from a StreamVertex; lacking the
--- final parent StreamProg parameter. The vertexID is not preserved.
+-- final parent StreamProg parameter.
 fromStreamVertex :: StreamVertex -> ([StreamProg] -> StreamProg)
-fromStreamVertex (StreamVertex _ o p i ot s) = StreamProg o (map deQ p) i ot s
+fromStreamVertex (StreamVertex v o p i ot s) = StreamProg v o (map deQ p) i ot s
 
--- | construct a partial StreamVertex from a StreamProg node. Return a function
--- that requires the final vertexId.
-toStreamVertex :: StreamProg -> (Int -> StreamVertex)
-toStreamVertex (StreamProg o p i ot st _) = \v ->
-    StreamVertex v o (map return p) i ot st
+toStreamVertex :: StreamProg -> StreamVertex
+toStreamVertex (StreamProg v o p i ot st _) = StreamVertex v o (map return p) i ot st
 
-prop_tofromStreamVertex_idem sv = sv == toStreamVertex (fromStreamVertex sv []) (vertexId sv)
+prop_tofromStreamVertex_idem sv = sv == toStreamVertex (fromStreamVertex sv [])
 
 fromStreamGraph :: StreamGraph -> StreamProg
 fromStreamGraph sg = let
@@ -61,7 +57,14 @@ fromStreamGraph' sg v = let
     in fromStreamVertex v $ map (fromStreamGraph' sg) incoming
 
 toStreamGraph :: StreamProg -> StreamGraph
-toStreamGraph sp@(StreamProg _ _ _ _ _ par) = let
-    v = (toStreamVertex sp) 0
-    in edges (map (\p -> (toStreamVertex p 0, v)) par)
+toStreamGraph sp@(StreamProg _ _ _ _ _ _ par) = let
+    v = toStreamVertex sp
+    in edges (map (\p -> (toStreamVertex p, v)) par)
         `overlay` overlays (map toStreamGraph par)
+
+-- guard for QuickCheck properties
+haveEdgesToSink :: StreamGraph -> Bool
+haveEdgesToSink = not . null . filter ((==) Sink . operator . snd) . edgeList
+
+prop_tofromStreamGraph_idem sg = 
+    haveEdgesToSink sg ==> sg == toStreamGraph (fromStreamGraph sg)
