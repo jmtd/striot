@@ -58,7 +58,10 @@ fromStreamGraph sg = let
 fromStreamGraph' :: StreamGraph -> StreamVertex -> StreamProg
 fromStreamGraph' sg v = let
     incoming = (map fst . filter ((==) v . snd) . edgeList) sg
-    in (fromStreamVertex v) $ map (fromStreamGraph' sg) incoming
+    in fromStreamVertex v $ map (fromStreamGraph' sg) incoming
 
--- toStreamGraph :: StreamProg -> StreamGraph
--- toStreamGraph (StreamProg o p i ot st)
+toStreamGraph :: StreamProg -> StreamGraph
+toStreamGraph sp@(StreamProg _ _ _ _ _ par) = let
+    v = (toStreamVertex sp) 0
+    in edges (map (\p -> (toStreamVertex p 0, v)) par)
+        `overlay` overlays (map toStreamGraph par)
