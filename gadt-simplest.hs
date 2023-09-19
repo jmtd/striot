@@ -17,12 +17,22 @@ type ArrivalRate = Double
 sinkFn = [| mapM_ $ putStrLn . ("receiving "++) . show . value |] :: ExpQ
 
 data StreamProg = StreamProg Int StreamOperator [Exp] String String ServiceTime [StreamProg]
-    deriving (Show, Eq)
+    deriving (Show)
 
+-- deliberately ignore the vertexId element. If a rewrite rule causes vertex
+-- renumbering, but the structure is identical and the expressions the same,
+-- we consider them equal.
+instance Eq StreamProg where
+    (StreamProg id1 op1 exps1 int1 out1 st1 parents1) ==
+        (StreamProg id2 op2 exps2 int2 out2 st2 parents2) = and
+            [ op1      == op2
+            , exps1    == exps2
+            , int1     == int2
+            , out1     == out2
+            , st1      == st2
+            , parents1 == parents2
 
--- what StreamGraph will demonstrate the issue of vertexIds getting reshuffled?
 sample1 = simpleStream
-  [ ((Source 1) , [[| sourceFn |]], "Int", 0)
   , ((Filter 0.5), [[| (>5) |]], "Int", 1)
   , ((Filter 0.5), [[| (<8) |]], "Int", 1)
   , (Window , [[| chop 1 |]], "[Int]", 1)
