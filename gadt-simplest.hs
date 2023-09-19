@@ -31,8 +31,11 @@ instance Eq StreamProg where
             , out1     == out2
             , st1      == st2
             , parents1 == parents2
+            ]
 
+-- what StreamGraph will demonstrate the issue of vertexIds getting reshuffled?
 sample1 = simpleStream
+  [ ((Source 1) , [[| sourceFn |]], "Int", 0)
   , ((Filter 0.5), [[| (>5) |]], "Int", 1)
   , ((Filter 0.5), [[| (<8) |]], "Int", 1)
   , (Window , [[| chop 1 |]], "[Int]", 1)
