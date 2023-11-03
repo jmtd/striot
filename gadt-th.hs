@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax
+import Control.Applicative
 import Data.Function ((&))
 import Striot.FunctionalProcessing
 import Striot.FunctionalIoTtypes
@@ -35,6 +37,11 @@ test2 = StreamSink   [|| print ||]
       . StreamFilter [|| (>5) ||]
 
 
+-- example instances for StrExp
+e1 :: StrExp (Int -> Int)
+e1 = [|| (+3) ||]
+e2 :: StrExp (Int -> Int)
+e2 = [|| (\n -> n-2) ||]
 
 printProgram :: StreamProgram a -> IO ()
 printProgram = mapM_ print . reverse . doSomething
@@ -44,3 +51,20 @@ doSomething (StreamSource fn)          = "the source!" : []
 doSomething (StreamMap fn parent)      = "map"         : doSomething parent
 doSomething (StreamFilter pred parent) = "filter"      : doSomething parent
 doSomething (StreamSink fn parent)     = "the sink!"   : doSomething parent
+
+
+-- rewrite rules
+
+-- lifting composition into StrExp / Code Q is achieved with typed splices
+-- and types quasi-quotes
+expCmp :: StrExp (b -> c) -> StrExp (a -> b) -> StrExp (a -> c)
+expCmp e1 e2 = [|| $$(e1) . $$(e2) ||]
+
+-- StreamMap f . streamMap g = streamMap (f . g)
+mapFuse :: StreamProgram o -> StreamProgram o
+mapFuse (StreamMap f (StreamMap g instream)) =
+    StreamMap (expCmp f g) instream
+
+mapFuse' :: StreamProgram o -> StreamProgram o
+mapFuse' (StreamMap f (StreamMap g instream)) =
+    StreamMap [|| $$(f) . $$(g) ||] instream
