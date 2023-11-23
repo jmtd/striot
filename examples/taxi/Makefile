@@ -35,7 +35,6 @@ clean:
 	    generate.dyn_hi generate.dyn_o \
 	    Taxi.hi Taxi.o \
 	    Taxi.dyn_hi Taxi.dyn_o \
-	    node1/sorteddata.csv \
 	    node1/node.hs node2/node.hs node3/node.hs \
 	    node1/node.hi node2/node.hi node3/node.hi \
 	    node1/node node2/node node3/node \
